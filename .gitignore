@@ -1,0 +1,23 @@
+
+
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Linux
+*~
+
+# macOS
+.DS_Store
