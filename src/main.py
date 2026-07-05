@@ -1,3 +1,6 @@
+
+
+
 import sys
 
 from scanner.discovery import discover_hosts
@@ -18,8 +21,22 @@ def main():
 
     print(f"Target Network: {network}")
 
-    discover_hosts(network)
+    active_hosts = discover_hosts(network)
+
+    print()
+
+    print("Active Hosts:")
+
+    for host in active_hosts:
+
+        print(host)
 
 if __name__ == "__main__" :
 
     main()
+
+
+
+
+
+
