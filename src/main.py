@@ -27,13 +27,17 @@ def main():
 
     print()
 
-    if scan_port("192.168.1.1", 80):
+    ports = [22, 80, 443]
 
-        print("Port 80 is OPEN")
+    for port in ports:
 
-    else:
+        if scan_port("192.168.1.1", port):
 
-        print("Port 80 is CLOSED")
+            print(f"Port {port} is OPEN")
+
+        else:
+
+            print(f"Port {port} is CLOSED")
 
     print()
 
