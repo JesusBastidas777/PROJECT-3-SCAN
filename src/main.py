@@ -29,15 +29,21 @@ def main():
 
     ports = [22, 80, 443]
 
-    for port in ports:
+    for host in active_hosts:
 
-        if scan_port("192.168.1.1", port):
+        print()
 
-            print(f"Port {port} is OPEN")
+        print(f"Scanning host: {host}")
 
-        else:
+        for port in ports:
 
-            print(f"Port {port} is CLOSED")
+            if scan_port(host, port):
+
+                print(f"{port}/tcp\tOPEN")
+
+            else:
+
+                print(f"{port}/tcp\tCLOSED")
 
     print()
 
