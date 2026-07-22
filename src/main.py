@@ -51,13 +51,9 @@ def main():
 
         for port in ports:
 
-            if scan_port(host, port):
+            result = scan_port(host, port)
 
-                print(f"{port}/tcp\tOPEN")
-
-            else:
-
-                print(f"{port}/tcp\tCLOSED")
+            print(f"{result['port']}/{result['protocol']}\t{result['status']}")
 
     print()
 

@@ -13,8 +13,11 @@ def scan_port(ip, port):
 
     sock.close()
 
-    return result == 0
-
+    return {
+        "port": port,
+        "protocol": "tcp",
+        "status": "OPEN" if result == 0 else "CLOSED"
+    }
 
 
 
