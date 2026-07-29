@@ -1,11 +1,16 @@
 
 
 
+
+
+
+
+
 import sys
 
 from scanner.discovery import discover_hosts
 
-from scanner.ports import scan_port 
+from scanner.ports import scan_port
 
 def main():
 
@@ -26,6 +31,8 @@ def main():
     active_hosts = discover_hosts(network)
 
     print()
+
+    scan_results = []
 
     ports = [
 
@@ -53,6 +60,14 @@ def main():
 
             result = scan_port(host, port)
 
+            scan_results.append({
+
+            "host": host,
+
+            **result
+
+            })
+
             print(f"{result['port']}/{result['protocol']}\t{result['status']}")
 
     print()
@@ -66,6 +81,10 @@ def main():
 if __name__ == "__main__" :
 
     main()
+
+
+
+
 
 
 
