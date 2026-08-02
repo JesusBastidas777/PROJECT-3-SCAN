@@ -6,7 +6,12 @@
 
 
 
+
+
+
 import sys
+
+import json
 
 from scanner.discovery import discover_hosts
 
@@ -69,6 +74,14 @@ def main():
             })
 
             print(f"{result['port']}/{result['protocol']}\t{result['status']}")
+
+    with open("results/scan.json", "w") as file:
+
+        json.dump(scan_results, file, indent=4)
+
+    print()
+
+    print("Results saved to results/scan.json")
 
     print()
 
