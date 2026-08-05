@@ -9,6 +9,10 @@
 
 
 
+
+
+
+
 import sys
 
 import json
@@ -17,9 +21,10 @@ from scanner.discovery import discover_hosts
 
 from scanner.ports import scan_port
 
+
 def main():
 
-    if len(sys.argv) != 2 :
+    if len(sys.argv) != 2:
 
         print("Usage: python3 src/main.py <network>")
 
@@ -41,17 +46,17 @@ def main():
 
     ports = [
 
-    21,       #FTP
-    22,       #SSH
-    23,       #Telnet
-    25,       #SMTP
-    53,       #DNS
-    80,       #HTTP
-    110,      #POP3
-    143,      #IMAP
-    443,      #HTTPS
-    445,      #SMB
-    3389,     #RDP
+    21,       # FTP
+    22,       # SSH
+    23,       # Telnet
+    25,       # SMTP
+    53,       # DNS
+    80,       # HTTP
+    110,      # POP3
+    143,      # IMAP
+    443,      # HTTPS
+    445,      # SMB
+    3389,     # RDP
 
     ]
 
@@ -61,19 +66,23 @@ def main():
 
         print(f"Scanning host: {host}")
 
+        host_result = {
+
+            "host": host,
+
+            "ports": []
+
+        }
+
         for port in ports:
 
             result = scan_port(host, port)
 
-            scan_results.append({
-
-            "host": host,
-
-            **result
-
-            })
+            host_result["ports"].append(result)
 
             print(f"{result['port']}/{result['protocol']}\t{result['status']}")
+
+        scan_results.append(host_result)
 
     with open("results/scan.json", "w") as file:
 
@@ -91,9 +100,26 @@ def main():
 
         print(host)
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
