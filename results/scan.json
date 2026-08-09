@@ -57,7 +57,14 @@
                 "protocol": "tcp",
                 "status": "CLOSED"
             }
-        ]
+        ],
+        "open_ports": [
+            53,
+            80,
+            443
+        ],
+        "open_count": 3,
+        "closed_count": 8
     },
     {
         "host": "192.168.1.2",
@@ -117,67 +124,10 @@
                 "protocol": "tcp",
                 "status": "CLOSED"
             }
-        ]
-    },
-    {
-        "host": "192.168.1.3",
-        "ports": [
-            {
-                "port": 21,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 22,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 23,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 25,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 53,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 80,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 110,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 143,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 443,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 445,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            },
-            {
-                "port": 3389,
-                "protocol": "tcp",
-                "status": "CLOSED"
-            }
-        ]
+        ],
+        "open_ports": [],
+        "open_count": 0,
+        "closed_count": 11
     },
     {
         "host": "192.168.1.5",
@@ -237,6 +187,72 @@
                 "protocol": "tcp",
                 "status": "CLOSED"
             }
-        ]
+        ],
+        "open_ports": [],
+        "open_count": 0,
+        "closed_count": 11
+    },
+    {
+        "host": "192.168.1.6",
+        "ports": [
+            {
+                "port": 21,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 22,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 23,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 25,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 53,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 80,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 110,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 143,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 443,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 445,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            },
+            {
+                "port": 3389,
+                "protocol": "tcp",
+                "status": "CLOSED"
+            }
+        ],
+        "open_ports": [],
+        "open_count": 0,
+        "closed_count": 11
     }
 ]

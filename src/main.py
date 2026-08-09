@@ -70,15 +70,32 @@ def main():
 
             "host": host,
 
-            "ports": []
+            "ports": [],
+
+            "open_ports": [],
+
+            "open_count": 0,
+
+            "closed_count": 0
 
         }
+
 
         for port in ports:
 
             result = scan_port(host, port)
 
             host_result["ports"].append(result)
+
+            if result["status"] == "OPEN":
+
+                host_result["open_ports"].append(result["port"])
+
+                host_result["open_count"] += 1
+
+            else:
+
+                host_result["closed_count"] += 1
 
             print(f"{result['port']}/{result['protocol']}\t{result['status']}")
 
