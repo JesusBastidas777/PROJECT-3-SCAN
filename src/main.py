@@ -60,6 +60,10 @@ def main():
 
     ]
 
+    total_open_ports = 0
+
+    total_closed_ports = 0
+
     for host in active_hosts:
 
         print()
@@ -93,17 +97,39 @@ def main():
 
                 host_result["open_count"] += 1
 
+                total_open_ports += 1
+
             else:
 
                 host_result["closed_count"] += 1
+
+                total_closed_ports += 1
 
             print(f"{result['port']}/{result['protocol']}\t{result['status']}")
 
         scan_results.append(host_result)
 
+    scan_data = {
+
+        "network": network,
+
+        "summary": {
+
+            "active_hosts": len(active_hosts),
+
+            "total_open_ports": total_open_ports,
+
+            "total_closed_ports": total_closed_ports
+
+         },
+
+         "hosts": scan_results
+
+    }
+
     with open("results/scan.json", "w") as file:
 
-        json.dump(scan_results, file, indent=4)
+        json.dump(scan_data, file, indent=4)
 
     print()
 
