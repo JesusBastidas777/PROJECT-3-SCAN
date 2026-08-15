@@ -19,7 +19,7 @@ import json
 
 from scanner.discovery import discover_hosts
 
-from scanner.ports import scan_port
+from scanner.ports import scan_ports
 
 
 def main():
@@ -85,9 +85,9 @@ def main():
         }
 
 
-        for port in ports:
+        results = scan_ports(host, ports)
 
-            result = scan_port(host, port)
+        for result in results:
 
             host_result["ports"].append(result)
 
