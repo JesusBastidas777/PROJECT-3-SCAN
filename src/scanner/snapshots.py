@@ -31,6 +31,15 @@ def build_snapshot(report: Mapping[str, Any], previous_snapshot_id: str | None =
     return value
 
 
+def validate_snapshot(snapshot: Mapping[str, Any]) -> None:
+    required = {"snapshot_id", "scan_id", "target_id", "configuration_fingerprint", "content_fingerprint", "report"}
+    if required - snapshot.keys() or not all(isinstance(snapshot.get(key), str) for key in required - {"report"}): raise ValueError("invalid snapshot shape")
+    if not str(snapshot["snapshot_id"]).startswith("snapshot_"): raise ValueError("invalid snapshot_id")
+    if not isinstance(snapshot["report"], Mapping): raise ValueError("invalid snapshot report")
+    validate_report_shape(snapshot["report"])
+    if snapshot["report"]["schema_version"] != "2.0" or snapshot["target_id"] != snapshot["report"]["target"]["target_id"]: raise ValueError("invalid snapshot contract")
+
+
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None

@@ -1,7 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:project-scan:report:1.0",
-  "type": "object",
-  "required": ["schema_version", "scanner", "network", "target", "timestamp", "duration_ms", "summary", "hosts", "metadata"],
-  "properties": {"schema_version": {"const": "1.0"}}
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:project-scan:report:1.0","type":"object",
+  "required":["schema_version","scanner","network","target","timestamp","duration_ms","summary","hosts","metadata"],
+  "properties":{"schema_version":{"const":"1.0"},"scanner":{"type":"object","required":["name","version"]},"network":{"type":"string"},"target":{"type":"object","required":["input","network","ip_version","candidate_hosts"],"properties":{"ip_version":{"enum":[4,6]},"candidate_hosts":{"type":"integer","minimum":0}}},"timestamp":{"type":"string","format":"date-time"},"duration_ms":{"type":"integer","minimum":0},"summary":{"type":"object","required":["active_hosts","hosts_scanned","ports_scanned","total_open_ports","total_closed_ports","total_errors"]},"hosts":{"type":"array","items":{"type":"object","required":["host","ports","open_ports","open_count","closed_count","error_count"]}},"metadata":{"type":"object","required":["discovery","ports","ping_timeout_seconds","connect_timeout_seconds","workers","max_hosts"]}}
 }

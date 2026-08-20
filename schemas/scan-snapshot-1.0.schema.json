@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:project-scan:snapshot:1.0","type":"object",
+  "required":["snapshot_id","scan_id","target_id","configuration_fingerprint","content_fingerprint","report"],
+  "properties":{"snapshot_id":{"type":"string","pattern":"^snapshot_[a-f0-9]{24}$"},"scan_id":{"type":"string","pattern":"^scan_"},"target_id":{"type":"string","pattern":"^target_"},"configuration_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},"content_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},"previous_snapshot_id":{"type":"string","pattern":"^snapshot_"},"report":{"type":"object"}}
+}

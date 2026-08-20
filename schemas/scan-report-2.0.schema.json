@@ -1,36 +1,6 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:project-scan:report:2.0",
-  "type": "object",
-  "required": ["schema_version", "document_type", "scan_id", "scanner", "started_at", "completed_at", "duration_ms", "target", "configuration", "capabilities", "summary", "assets", "observations", "errors"],
-  "properties": {
-    "schema_version": {"const": "2.0"},
-    "document_type": {"const": "scan_report"},
-    "observations": {"type": "array"},
-    "errors": {"type": "array"},
-    "name_observations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["address", "source", "status", "trusted"],
-        "properties": {
-          "source": {"const": "ptr"},
-          "status": {"enum": ["resolved", "no_name", "timeout", "error", "skipped"]},
-          "trusted": {"const": false}
-        }
-      }
-    },
-    "discovery_observations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["discovery_observation_id", "address", "ip_version", "method", "result"],
-        "properties": {
-          "method": {"enum": ["icmp_echo", "tcp_connect"]},
-          "result": {"enum": ["response", "no_response", "timeout", "probe_error", "unsupported", "connected", "connection_refused", "unreachable", "error"]},
-          "ip_version": {"enum": [4, 6]}
-        }
-      }
-    }
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:project-scan:report:2.0","type":"object",
+  "required":["schema_version","document_type","scan_id","scanner","started_at","completed_at","duration_ms","target","configuration","capabilities","summary","assets","observations","errors"],
+  "properties":{"schema_version":{"const":"2.0"},"document_type":{"const":"scan_report"},"scan_id":{"type":"string","pattern":"^scan_[a-f0-9]{24}$"},"scanner":{"type":"object","required":["name","version"]},"started_at":{"type":"string","format":"date-time"},"completed_at":{"type":"string","format":"date-time"},"duration_ms":{"type":"integer","minimum":0},"target":{"type":"object","required":["input","network","target_id","ip_version"],"properties":{"target_id":{"type":"string","pattern":"^target_[a-f0-9]{20}$"},"ip_version":{"enum":[4,6]}}},"configuration":{"type":"object"},"effective_configuration":{"type":"object"},"capabilities":{"type":"object","additionalProperties":{"type":"boolean"}},"summary":{"type":"object","required":["assets_observed","observations","states","errors"]},"assets":{"type":"array","items":{"type":"object","required":["asset_id","addresses","identity","endpoints","fingerprints"]}},"observations":{"type":"array","items":{"type":"object","required":["observation_id","asset_id","port","transport","state","state_evidence"],"properties":{"state":{"enum":["open","closed","unknown","error"]}}}},"errors":{"type":"array"},"discovery_observations":{"type":"array","items":{"type":"object","required":["discovery_observation_id","address","ip_version","method","result"],"properties":{"method":{"enum":["icmp_echo","tcp_connect"]},"result":{"enum":["response","no_response","timeout","probe_error","unsupported","connected","connection_refused","unreachable","error"]},"ip_version":{"enum":[4,6]}}}},"name_observations":{"type":"array","items":{"type":"object","required":["address","source","status","trusted"],"properties":{"source":{"const":"ptr"},"status":{"enum":["resolved","no_name","timeout","error","skipped"]},"trusted":{"const":false}}}}
   }
 }

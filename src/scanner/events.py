@@ -50,6 +50,19 @@ def validate_event(event: Mapping[str, Any]) -> None:
     required = {"event_schema_version", "event_id", "event_type", "occurred_at", "producer", "scan_id", "target_id", "subject", "observation", "evidence_refs", "confidence", "limitations", "deduplication_key"}
     if event.get("event_schema_version") != EVENT_SCHEMA_VERSION or required - event.keys():
         raise ValueError("invalid FOREX event")
+    if event.get("event_type") not in {"scan.completed", "asset.observed", "endpoint.observed", "network.change_observed", "scan.partial", "probe.error"}: raise ValueError("invalid FOREX event type")
+    for field in ("subject", "observation", "producer"):
+        if not isinstance(event.get(field), Mapping): raise ValueError("invalid FOREX event object")
+    for field in ("evidence_refs", "limitations"):
+        if not isinstance(event.get(field), list) or not all(isinstance(value, str) for value in event[field]): raise ValueError("invalid FOREX event list")
     from scanner.contract import canonical_json
     if len(canonical_json(event).encode("utf-8")) > MAX_EVENT_BYTES:
         raise ValueError("FOREX event exceeds payload limit")
+
+
+def validate_events_for_report(events: Sequence[Mapping[str, Any]], report: Mapping[str, Any]) -> None:
+    known = {item["observation_id"] for item in report.get("observations", [])}
+    for event in events:
+        validate_event(event)
+        if event.get("scan_id") != report.get("scan_id") or not set(event.get("evidence_refs", [])) <= known:
+            raise ValueError("event evidence reference does not exist in report")

@@ -61,3 +61,10 @@ def compare_snapshots(baseline: Mapping[str, Any], current: Mapping[str, Any]) -
 def build_comparison(baseline: Mapping[str, Any], current: Mapping[str, Any]) -> dict[str, Any]:
     """Build a deterministic independently versioned comparison document."""
     return {"comparison_schema_version": "1.0", "document_type": "snapshot_comparison", **compare_snapshots(baseline, current)}
+
+
+def validate_comparison(value: Mapping[str, Any]) -> None:
+    required = {"comparison_schema_version", "document_type", "baseline_snapshot_id", "current_snapshot_id", "configuration_match", "comparison_scope", "changes_summary", "changes", "indeterminate"}
+    if required - value.keys() or value.get("comparison_schema_version") != "1.0" or value.get("document_type") != "snapshot_comparison": raise ValueError("invalid comparison contract")
+    if not isinstance(value["changes"], list) or not isinstance(value["indeterminate"], list): raise ValueError("invalid comparison collections")
+    if value["changes_summary"].get("total") != len(value["changes"]) or value["changes_summary"].get("indeterminate") != len(value["indeterminate"]): raise ValueError("comparison summary mismatch")

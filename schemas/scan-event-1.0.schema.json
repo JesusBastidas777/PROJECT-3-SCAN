@@ -1,10 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:project-scan:forex-event:1.0",
-  "type": "object",
-  "required": ["event_schema_version", "event_id", "event_type", "occurred_at", "producer", "scan_id", "target_id", "subject", "observation", "evidence_refs", "confidence", "limitations", "deduplication_key"],
-  "properties": {
-    "event_schema_version": {"const": "1.0"},
-    "event_type": {"enum": ["scan.completed", "asset.observed", "endpoint.observed", "network.change_observed", "scan.partial", "probe.error"]}
-  }
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:project-scan:forex-event:1.0","type":"object",
+  "required":["event_schema_version","event_id","event_type","occurred_at","producer","scan_id","target_id","subject","observation","evidence_refs","confidence","limitations","deduplication_key"],
+  "properties":{"event_schema_version":{"const":"1.0"},"event_id":{"type":"string","pattern":"^event_"},"event_type":{"enum":["scan.completed","asset.observed","endpoint.observed","network.change_observed","scan.partial","probe.error"]},"occurred_at":{"type":"string","format":"date-time"},"producer":{"type":"object","required":["name","version"]},"scan_id":{"type":"string","pattern":"^scan_"},"target_id":{"type":"string","pattern":"^target_"},"subject":{"type":"object"},"observation":{"type":"object"},"evidence_refs":{"type":"array","items":{"type":"string"},"uniqueItems":true},"confidence":{"enum":["observed","low","indeterminate"]},"limitations":{"type":"array","items":{"type":"string"}},"deduplication_key":{"type":"string","pattern":"^dedup_"}}
 }

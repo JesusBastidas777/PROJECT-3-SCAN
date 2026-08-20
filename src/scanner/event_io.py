@@ -29,6 +29,11 @@ def event_document(events: Sequence[Mapping[str, Any]], format_name: str) -> dic
     if format_name == "batch-json": return {"batch_schema_version": "1.0", "document_type": "forex_event_batch", "event_schema_versions": sorted({str(item["event_schema_version"]) for item in events}), "count": len(events), "truncated": any(item.get("event_type") == "scan.partial" for item in events), "events": list(events)}
     if format_name == "ndjson": return "".join(canonical_json(item) + "\n" for item in events)
     raise ValueError("unsupported event format")
+def validate_batch(batch: Mapping[str, Any]) -> None:
+    required = {"batch_schema_version", "document_type", "event_schema_versions", "count", "truncated", "events"}
+    if required - batch.keys() or batch.get("batch_schema_version") != "1.0" or batch.get("document_type") != "forex_event_batch": raise ValueError("invalid event batch")
+    if not isinstance(batch["events"], list) or batch["count"] != len(batch["events"]): raise ValueError("event batch count mismatch")
+    for event in batch["events"]: validate_event(event)
 def _atomic_text(path: Path, text: str) -> None:
     destination = Path(path); destination.parent.mkdir(parents=True, exist_ok=True); temporary = None
     try:

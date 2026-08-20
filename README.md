@@ -161,7 +161,8 @@ hash-only` omits sensitive textual evidence where present. No remote transport i
 implemented.
 
 Detailed integration and migration guidance is in `docs/FOREX_INTEGRATION.md`
-and `docs/SCHEMA_MIGRATION.md`.
+and `docs/SCHEMA_MIGRATION.md`. Third-stage contract, privacy, retention and
+portability guidance is in `docs/THIRD_STAGE_CONTRACTS.md`.
 
 ## Exit codes
 

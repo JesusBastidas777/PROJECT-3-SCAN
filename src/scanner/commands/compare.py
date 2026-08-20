@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from typing import Any
 from scanner.changes import build_comparison
 from scanner.report import serialize_report, write_report_atomic
+from scanner.snapshots import validate_snapshot
 
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
 
@@ -16,8 +17,8 @@ def read_snapshot(path: Path) -> dict[str, Any]:
     if supplied.is_symlink(): raise OSError("snapshot path cannot be a symlink")
     if supplied.stat().st_size > MAX_SNAPSHOT_BYTES: raise OSError("snapshot exceeds size limit")
     value = json.loads(supplied.read_text(encoding="utf-8"))
-    if not isinstance(value, dict) or not isinstance(value.get("snapshot_id"), str) or value.get("report", {}).get("schema_version") != "2.0":
-        raise ValueError("invalid schema-2.0 snapshot")
+    if not isinstance(value, dict): raise ValueError("invalid schema-2.0 snapshot")
+    validate_snapshot(value)
     return value
 
 def compare_main(argv: Sequence[str]) -> int:

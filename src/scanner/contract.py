@@ -65,7 +65,7 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
         "target": {"input": target_input, "network": str(network_obj), "target_id": target_id(network_obj), "ip_version": network_obj.version},
         "configuration": configuration,
         "effective_configuration": dict(configuration),
-        "capabilities": {"tcp_connect": True, "ipv4": True, "ipv6": True, "service_hints": True, "passive_banners": banners_enabled, "tls_handshake": bool(tls_configuration and tls_configuration.get("enabled")), "reverse_dns": bool(dns_configuration and dns_configuration.get("enabled")), "fingerprints": True, "inventory": True},
+        "capabilities": {"tcp_connect": True, "ipv4": True, "ipv6": True, "service_hints": True, "passive_banners": any("banner" in item for values in host_results.values() for item in values), "tls_handshake": any("tls" in item for values in host_results.values() for item in values), "reverse_dns": any(item.get("status") != "skipped" for item in name_observations), "fingerprints": True, "inventory": True},
         "summary": {"assets_observed": len(assets), "observations": len(observations), "states": state_counts, "errors": len(errors), "discovery": discovery_summary(list(discovery_observations))},
         "assets": assets, "observations": observations, "errors": errors,
         "discovery_observations": [dict(item) for item in discovery_observations],
@@ -87,3 +87,16 @@ def validate_report_shape(report: Mapping[str, Any]) -> None:
     missing = required - report.keys()
     if missing:
         raise ValueError(f"missing required report fields: {sorted(missing)}")
+    if not isinstance(report.get("scanner"), Mapping) or not isinstance(report.get("summary"), Mapping) or not isinstance(report.get("target"), Mapping):
+        raise ValueError("invalid report object fields")
+    if version == "1.0":
+        if not isinstance(report["hosts"], list) or not isinstance(report["metadata"], Mapping): raise ValueError("invalid schema-1.0 collections")
+        return
+    for field in ("assets", "observations", "errors"):
+        if not isinstance(report[field], list): raise ValueError(f"invalid {field}")
+    observation_ids = [item.get("observation_id") for item in report["observations"]]
+    if any(not isinstance(value, str) for value in observation_ids) or len(observation_ids) != len(set(observation_ids)): raise ValueError("observation IDs must be unique strings")
+    asset_ids = {item.get("asset_id") for item in report["assets"]}
+    if any(item.get("asset_id") not in asset_ids for item in report["observations"]): raise ValueError("observation references unknown asset")
+    states = {state: sum(item.get("state") == state for item in report["observations"]) for state in ("open", "closed", "unknown", "error")}
+    if report["summary"].get("states") != states or report["summary"].get("observations") != len(report["observations"]): raise ValueError("report summary does not match observations")
