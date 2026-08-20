@@ -20,6 +20,7 @@ from scanner.discovery import (
 from scanner.ports import scan_hosts
 from scanner.banners import collect_open_banners, DEFAULT_BANNER_WORKERS, DEFAULT_MAX_BYTES, DEFAULT_MAX_ENDPOINTS
 from scanner.report import build_report, serialize_report, utc_timestamp, write_report_atomic
+from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -143,6 +144,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--banner-max-endpoints", type=positive_integer, default=DEFAULT_MAX_ENDPOINTS)
     parser.add_argument("--banner-max-bytes", type=positive_integer, default=DEFAULT_MAX_BYTES)
     parser.add_argument("--banner-read-timeout", type=positive_float, default=0.5, metavar="SECONDS")
+    parser.add_argument("--schema-version", choices=SUPPORTED_REPORT_VERSIONS, default="1.0")
     return parser
 
 
@@ -173,6 +175,16 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             max_bytes=args.banner_max_bytes,
         )
     duration_ms = max(0, round((time.monotonic() - started) * 1000))
+    if args.schema_version == "2.0":
+        completed_at = utc_timestamp()
+        return build_report_v2(
+            target_input=args.target, network=network, host_results=host_results,
+            ports=args.ports, started_at=timestamp, completed_at=completed_at,
+            duration_ms=duration_ms, ping_timeout=args.ping_timeout,
+            connect_timeout=args.connect_timeout, workers=args.workers,
+            max_hosts=args.max_hosts, banners_enabled=args.collect_banners,
+            banner_limits={"workers": min(args.banner_workers, 32), "max_endpoints": args.banner_max_endpoints, "max_bytes": args.banner_max_bytes, "read_timeout_seconds": args.banner_read_timeout},
+        )
     return build_report(
         target_input=args.target,
         network=network,

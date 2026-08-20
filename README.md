@@ -119,6 +119,10 @@ Each host retains the established fields `ports`, `open_ports`, `open_count`, an
 the status values `OPEN` or `CLOSED`. A report with no active hosts is still a
 complete schema-v1 document with empty `hosts` and zero summary counters.
 
+Schema 1.0 remains the CLI default and is frozen for compatibility. Select the
+evidence-rich report contract with `--schema-version 2.0`. Version 2.0 separates
+assets, observations, stable errors, actual capabilities and scan configuration.
+
 ## Exit codes
 
 - `0`: scan and output completed successfully.

@@ -27,6 +27,11 @@ REPORT = {
 
 
 class CliTests(unittest.TestCase):
+    def test_schema_version_selection_defaults_to_one(self):
+        parser = scan_main.create_parser()
+        self.assertEqual(parser.parse_args(["127.0.0.1"]).schema_version, "1.0")
+        self.assertEqual(parser.parse_args(["127.0.0.1", "--schema-version", "2.0"]).schema_version, "2.0")
+
     def test_help_exits_successfully(self):
         with patch("sys.stdout", new_callable=io.StringIO) as stdout, self.assertRaises(SystemExit) as raised:
             scan_main.main(["--help"])
@@ -116,6 +121,7 @@ class CliTests(unittest.TestCase):
             ping_timeout=0.2, connect_timeout=0.3, max_hosts=2, output="-",
             collect_banners=False, banner_workers=2, banner_max_endpoints=8,
             banner_max_bytes=128, banner_read_timeout=0.2,
+            schema_version="1.0",
         )
         report = scan_main.collect_report(args)
         self.assertEqual(report["duration_ms"], 25)

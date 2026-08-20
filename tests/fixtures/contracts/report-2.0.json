@@ -1,0 +1,1 @@
+{"schema_version":"2.0","document_type":"scan_report","scan_id":"scan_example","scanner":{"name":"SCAN","version":"2.0.0"},"started_at":"2026-08-20T00:00:00.000Z","completed_at":"2026-08-20T00:00:00.000Z","duration_ms":0,"target":{},"configuration":{},"capabilities":{},"summary":{},"assets":[],"observations":[],"errors":[]}
