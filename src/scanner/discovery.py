@@ -29,12 +29,32 @@ def normalize_network(target: object) -> ipaddress.IPv4Network | ipaddress.IPv6N
         raise TargetValidationError(f"invalid target: {target!r}") from exc
 
 
-def _usable_host_count(
+def candidate_host_count(
     network: ipaddress.IPv4Network | ipaddress.IPv6Network,
 ) -> int:
+    """Return the number of addresses yielded by ``network.hosts()``."""
+
     if network.version == 4:
         return network.num_addresses if network.prefixlen >= 31 else network.num_addresses - 2
     return network.num_addresses if network.prefixlen >= 127 else network.num_addresses - 1
+
+
+def validate_network(
+    target: object, *, max_hosts: int = DEFAULT_MAX_HOSTS
+) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    """Normalize *target* and enforce the configured safety limit."""
+
+    network_obj = normalize_network(target)
+    if isinstance(max_hosts, bool) or not isinstance(max_hosts, int) or max_hosts < 1:
+        raise ValueError("max_hosts must be a positive integer")
+
+    host_count = candidate_host_count(network_obj)
+    if host_count > max_hosts:
+        raise NetworkTooLargeError(
+            f"target {network_obj} contains {host_count} usable hosts; "
+            f"configured limit is {max_hosts}"
+        )
+    return network_obj
 
 
 def _worker_count(requested: int, task_count: int) -> int:
@@ -52,16 +72,7 @@ def discover_hosts(
 ) -> list[str]:
     """Discover responsive hosts in *network* with bounded concurrency."""
 
-    network_obj = normalize_network(network)
-    if isinstance(max_hosts, bool) or not isinstance(max_hosts, int) or max_hosts < 1:
-        raise ValueError("max_hosts must be a positive integer")
-
-    host_count = _usable_host_count(network_obj)
-    if host_count > max_hosts:
-        raise NetworkTooLargeError(
-            f"target {network_obj} contains {host_count} usable hosts; "
-            f"configured limit is {max_hosts}"
-        )
+    network_obj = validate_network(network, max_hosts=max_hosts)
 
     hosts = list(network_obj.hosts())
     if not hosts:
