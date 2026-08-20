@@ -145,6 +145,8 @@ provided; retention is never triggered by a scan.
 Snapshot comparisons operate only on common measured scope. Missing endpoints and
 unknown/error transitions are explicitly indeterminate; they never assert that a
 host is offline, a timeout is filtering, or a changed banner is an update.
+`SCAN compare BASELINE CURRENT --output -` reads existing snapshots only and
+emits a deterministic `snapshot_comparison` 1.0 document without network probes.
 
 `--events-output PATH` writes a bounded array of versioned FOREX events for a
 schema-2.0 scan. Events are deterministic and idempotent, remain local, and state

@@ -52,7 +52,12 @@ def compare_snapshots(baseline: Mapping[str, Any], current: Mapping[str, Any]) -
     return {
         "baseline_snapshot_id": baseline["snapshot_id"], "current_snapshot_id": current["snapshot_id"],
         "configuration_match": configuration_match,
-        "comparison_scope": {"target_id": before["target"]["target_id"], "common_ports": common_ports, "transport": "tcp"},
+        "comparison_scope": {"target_id": before["target"]["target_id"], "common_ports": common_ports, "transport": "tcp", "common_capabilities": sorted(key for key in set(before.get("capabilities", {})) & set(after.get("capabilities", {})) if before["capabilities"].get(key) and after["capabilities"].get(key))},
         "changes_summary": {"total": len(changes), "indeterminate": len(indeterminate)},
         "changes": changes, "indeterminate": indeterminate,
     }
+
+
+def build_comparison(baseline: Mapping[str, Any], current: Mapping[str, Any]) -> dict[str, Any]:
+    """Build a deterministic independently versioned comparison document."""
+    return {"comparison_schema_version": "1.0", "document_type": "snapshot_comparison", **compare_snapshots(baseline, current)}

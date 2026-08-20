@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-scan:snapshot-comparison:1.0",
+  "type": "object",
+  "required": ["comparison_schema_version", "document_type", "baseline_snapshot_id", "current_snapshot_id", "configuration_match", "comparison_scope", "changes_summary", "changes", "indeterminate"],
+  "properties": {
+    "comparison_schema_version": {"const": "1.0"},
+    "document_type": {"const": "snapshot_comparison"},
+    "baseline_snapshot_id": {"type": "string", "pattern": "^snapshot_[a-f0-9]{24}$"},
+    "current_snapshot_id": {"type": "string", "pattern": "^snapshot_[a-f0-9]{24}$"},
+    "configuration_match": {"type": "boolean"},
+    "changes": {"type": "array"},
+    "indeterminate": {"type": "array"}
+  }
+}

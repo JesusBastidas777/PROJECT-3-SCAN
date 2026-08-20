@@ -29,6 +29,7 @@ from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, r
 from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS, MAX_TLS_WORKERS
 from scanner.dns import collect_name_observations, MAX_DNS_WORKERS
 from scanner.retention import retain_snapshots
+from scanner.commands.compare import compare_main
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -275,8 +276,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run SCAN and return a documented process exit code."""
 
     arguments = list(argv) if argv is not None else sys.argv[1:]
+    if arguments[:1] == ["compare"]:
+        return compare_main(arguments[1:])
     if arguments[:2] == ["history", "retain"]:
         return history_retain_main(arguments[2:])
+    if arguments[:1] == ["scan"]:
+        arguments = arguments[1:]
     parser = create_parser()
     args = parser.parse_args(arguments)
     try:
