@@ -114,6 +114,8 @@ class CliTests(unittest.TestCase):
         args = argparse.Namespace(
             target="127.0.0.1/32", ports=[22], workers=2,
             ping_timeout=0.2, connect_timeout=0.3, max_hosts=2, output="-",
+            collect_banners=False, banner_workers=2, banner_max_endpoints=8,
+            banner_max_bytes=128, banner_read_timeout=0.2,
         )
         report = scan_main.collect_report(args)
         self.assertEqual(report["duration_ms"], 25)

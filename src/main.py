@@ -18,6 +18,7 @@ from scanner.discovery import (
     validate_network,
 )
 from scanner.ports import scan_hosts
+from scanner.banners import collect_open_banners, DEFAULT_BANNER_WORKERS, DEFAULT_MAX_BYTES, DEFAULT_MAX_ENDPOINTS
 from scanner.report import build_report, serialize_report, utc_timestamp, write_report_atomic
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
@@ -137,6 +138,11 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="COUNT",
         help="reject targets with more candidate hosts",
     )
+    parser.add_argument("--collect-banners", action="store_true", help="passively collect bounded, untrusted banners from open endpoints")
+    parser.add_argument("--banner-workers", type=worker_count, default=DEFAULT_BANNER_WORKERS)
+    parser.add_argument("--banner-max-endpoints", type=positive_integer, default=DEFAULT_MAX_ENDPOINTS)
+    parser.add_argument("--banner-max-bytes", type=positive_integer, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--banner-read-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     return parser
 
 
@@ -158,6 +164,14 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
         timeout=args.connect_timeout,
         max_workers=args.workers,
     )
+    if args.collect_banners:
+        host_results = collect_open_banners(
+            host_results, workers=min(args.banner_workers, 32),
+            max_endpoints=args.banner_max_endpoints,
+            connect_timeout=args.connect_timeout,
+            read_timeout=args.banner_read_timeout,
+            max_bytes=args.banner_max_bytes,
+        )
     duration_ms = max(0, round((time.monotonic() - started) * 1000))
     return build_report(
         target_input=args.target,

@@ -149,3 +149,5 @@ python3 -m unittest discover -s tests -v
   observations. Schema 1.0 retains its historical OPEN/CLOSED projection.
 - Conventional service names are low-confidence port-registry hints only; they do
   not confirm which protocol or product is listening.
+- `--collect-banners` enables passive reads only on observed open endpoints. Banner
+  bytes are bounded, untrusted, never authenticated, and schema 1.0 omits them.
