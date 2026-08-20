@@ -127,6 +127,10 @@ assets, observations, stable errors, actual capabilities and scan configuration.
 index. History is never deleted automatically and may retain sensitive banners;
 operators must apply suitable permissions and retention policy.
 
+Snapshot comparisons operate only on common measured scope. Missing endpoints and
+unknown/error transitions are explicitly indeterminate; they never assert that a
+host is offline, a timeout is filtering, or a changed banner is an update.
+
 ## Exit codes
 
 - `0`: scan and output completed successfully.
