@@ -153,3 +153,5 @@ python3 -m unittest discover -s tests -v
   bytes are bounded, untrusted, never authenticated, and schema 1.0 omits them.
 - Basic fingerprints are deterministic rules over collected evidence. They expose
   their basis, confidence and rule ID and do not claim OS, product, CVE or risk.
+- Inventory asset IDs identify an address observation within a canonical target;
+  they are not permanent identities and distinct addresses are never auto-merged.
