@@ -81,6 +81,10 @@ Options:
   working directory. Explicit relative paths are resolved from the caller's
   current directory.
 
+`--profile minimal|standard|evidence` expands a versioned preset. Explicit CLI
+flags override profile values and reports record both the profile and complete
+effective configuration. No profile is applied to legacy invocations by default.
+
 CIDR host bits are normalized. For example, `192.168.1.7/24` scans the canonical
 network `192.168.1.0/24`. Large targets such as `0.0.0.0/0` are rejected unless
 the operator deliberately raises `--max-hosts`.

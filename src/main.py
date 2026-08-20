@@ -30,6 +30,7 @@ from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS, MAX_TLS_WORKERS
 from scanner.dns import collect_name_observations, MAX_DNS_WORKERS
 from scanner.retention import retain_snapshots
 from scanner.commands.compare import compare_main
+from scanner.profiles import apply_profile, PROFILES
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -179,7 +180,7 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="COUNT",
         help="reject targets with more candidate hosts",
     )
-    parser.add_argument("--collect-banners", action="store_true", help="passively collect bounded, untrusted banners from open endpoints")
+    parser.add_argument("--collect-banners", action=argparse.BooleanOptionalAction, default=False, help="passively collect bounded, untrusted banners from open endpoints")
     parser.add_argument("--banner-workers", type=banner_worker_count, default=DEFAULT_BANNER_WORKERS)
     parser.add_argument("--banner-max-endpoints", type=positive_integer, default=DEFAULT_MAX_ENDPOINTS)
     parser.add_argument("--banner-max-bytes", type=banner_byte_limit, default=DEFAULT_MAX_BYTES)
@@ -193,16 +194,17 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--discovery-ports", type=parse_ports, default=[443, 80, 22], metavar="PORTS")
     parser.add_argument("--discovery-connect-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     parser.add_argument("--max-discovery-endpoints", type=positive_integer, default=4096, metavar="COUNT")
-    parser.add_argument("--collect-tls", action="store_true")
+    parser.add_argument("--collect-tls", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--tls-ports", type=parse_ports, default=list(DEFAULT_TLS_PORTS), metavar="PORTS")
     parser.add_argument("--tls-workers", type=tls_worker_count, default=4)
     parser.add_argument("--tls-max-endpoints", type=positive_integer, default=32)
     parser.add_argument("--tls-connect-timeout", type=positive_float, default=.5, metavar="SECONDS")
     parser.add_argument("--tls-handshake-timeout", type=positive_float, default=1.0, metavar="SECONDS")
-    parser.add_argument("--resolve-names", action="store_true")
+    parser.add_argument("--resolve-names", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--dns-workers", type=dns_worker_count, default=4)
     parser.add_argument("--dns-timeout", type=positive_float, default=1.0, metavar="SECONDS")
     parser.add_argument("--dns-max-assets", type=positive_integer, default=256)
+    parser.add_argument("--profile", choices=tuple(PROFILES))
     return parser
 
 
@@ -257,6 +259,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             tls_configuration={"enabled": getattr(args, "collect_tls", False), "ports": getattr(args, "tls_ports", list(DEFAULT_TLS_PORTS)), "workers": getattr(args, "tls_workers", 4), "max_endpoints": getattr(args, "tls_max_endpoints", 32), "connect_timeout_seconds": getattr(args, "tls_connect_timeout", .5), "handshake_timeout_seconds": getattr(args, "tls_handshake_timeout", 1.0)},
             name_observations=name_observations,
             dns_configuration={"enabled": getattr(args, "resolve_names", False), "workers": getattr(args, "dns_workers", 4), "timeout_seconds": getattr(args, "dns_timeout", 1.0), "timeout_guarantee": "best_effort", "max_assets": getattr(args, "dns_max_assets", 256)},
+            profile_configuration={"name": getattr(args, "profile", None), "version": getattr(args, "profile_version", None), "overrides": getattr(args, "profile_overrides", [])},
         )
     return build_report(
         target_input=args.target,
@@ -283,7 +286,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments[:1] == ["scan"]:
         arguments = arguments[1:]
     parser = create_parser()
-    args = parser.parse_args(arguments)
+    args = apply_profile(parser.parse_args(arguments), arguments)
     try:
         report = collect_report(args)
         if args.history_dir is not None:
