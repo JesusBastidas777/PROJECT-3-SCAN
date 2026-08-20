@@ -128,6 +128,9 @@ assets, observations, stable errors, actual capabilities and scan configuration.
 It also records ordered ICMP discovery evidence, distinguishing response,
 no-response, timeout, unsupported tooling and stable probe errors. None of these
 results assert that a host is offline.
+`--collect-tls` performs a bounded handshake only on selected open endpoints.
+It sends no application data and records unvalidated, untrusted metadata with a
+hash-only certificate representation; it makes no identity or security claim.
 
 `--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
 index. History is never deleted automatically and may retain sensitive banners;

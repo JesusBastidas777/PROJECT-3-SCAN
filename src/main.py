@@ -25,6 +25,7 @@ from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2
 from scanner.snapshots import save_snapshot
 from scanner.events import events_from_report
 from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, reusable_endpoint_observations
+from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS, MAX_TLS_WORKERS
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -114,6 +115,13 @@ def banner_byte_limit(value: str) -> int:
     return parsed
 
 
+def tls_worker_count(value: str) -> int:
+    parsed = positive_integer(value)
+    if parsed > MAX_TLS_WORKERS:
+        raise argparse.ArgumentTypeError(f"TLS workers must be between 1 and {MAX_TLS_WORKERS}")
+    return parsed
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the SCAN argument parser."""
 
@@ -173,6 +181,12 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--discovery-ports", type=parse_ports, default=[443, 80, 22], metavar="PORTS")
     parser.add_argument("--discovery-connect-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     parser.add_argument("--max-discovery-endpoints", type=positive_integer, default=4096, metavar="COUNT")
+    parser.add_argument("--collect-tls", action="store_true")
+    parser.add_argument("--tls-ports", type=parse_ports, default=list(DEFAULT_TLS_PORTS), metavar="PORTS")
+    parser.add_argument("--tls-workers", type=tls_worker_count, default=4)
+    parser.add_argument("--tls-max-endpoints", type=positive_integer, default=32)
+    parser.add_argument("--tls-connect-timeout", type=positive_float, default=.5, metavar="SECONDS")
+    parser.add_argument("--tls-handshake-timeout", type=positive_float, default=1.0, metavar="SECONDS")
     return parser
 
 
@@ -201,6 +215,8 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
     reusable = reusable_endpoint_observations(tcp_discovery)
     for host, observations in host_results.items():
         host_results[host] = [reusable.get((host, int(item["port"])), item) for item in observations]
+    if getattr(args, "collect_tls", False):
+        host_results = collect_open_tls(host_results, ports=args.tls_ports, workers=args.tls_workers, max_endpoints=args.tls_max_endpoints, connect_timeout=args.tls_connect_timeout, handshake_timeout=args.tls_handshake_timeout)
     if args.collect_banners:
         host_results = collect_open_banners(
             host_results, workers=min(args.banner_workers, 32),
@@ -221,6 +237,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             banner_limits={"workers": min(args.banner_workers, 32), "max_endpoints": args.banner_max_endpoints, "max_bytes": args.banner_max_bytes, "read_timeout_seconds": args.banner_read_timeout},
             discovery_observations=discovery_observations,
             discovery_configuration={"mode": discovery_mode, "ports": getattr(args, "discovery_ports", [443, 80, 22]), "connect_timeout_seconds": getattr(args, "discovery_connect_timeout", 0.5), "max_endpoints": getattr(args, "max_discovery_endpoints", 4096)},
+            tls_configuration={"enabled": getattr(args, "collect_tls", False), "ports": getattr(args, "tls_ports", list(DEFAULT_TLS_PORTS)), "workers": getattr(args, "tls_workers", 4), "max_endpoints": getattr(args, "tls_max_endpoints", 32), "connect_timeout_seconds": getattr(args, "tls_connect_timeout", .5), "handshake_timeout_seconds": getattr(args, "tls_handshake_timeout", 1.0)},
         )
     return build_report(
         target_input=args.target,

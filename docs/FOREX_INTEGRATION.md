@@ -24,6 +24,8 @@ indeterminate. `--events-output PATH` writes bounded event arrays; validate
   unsupported tooling and probe errors never mean that an address is offline.
 - TCP fallback is opt-in. `connected` and `connection_refused` only establish a
   response from that address during the measured probe; timeout is inconclusive.
+- TLS metadata comes from an active, bounded handshake without SNI or certificate
+  validation. Certificate hashes do not prove identity, ownership or security.
 
 FOREX retains responsibility for correlation, risk and decisions. It must not
 infer host-down from absent ICMP, a CVE from banner text, or risk from an open port.
