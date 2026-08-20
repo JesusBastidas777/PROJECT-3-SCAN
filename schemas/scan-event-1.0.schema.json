@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-scan:forex-event:1.0",
+  "type": "object",
+  "required": ["event_schema_version", "event_id", "event_type", "occurred_at", "producer", "scan_id", "target_id", "subject", "observation", "evidence_refs", "confidence", "limitations", "deduplication_key"],
+  "properties": {
+    "event_schema_version": {"const": "1.0"},
+    "event_type": {"enum": ["scan.completed", "asset.observed", "endpoint.observed", "network.change_observed", "scan.partial", "probe.error"]}
+  }
+}

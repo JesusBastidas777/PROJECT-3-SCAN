@@ -131,6 +131,10 @@ Snapshot comparisons operate only on common measured scope. Missing endpoints an
 unknown/error transitions are explicitly indeterminate; they never assert that a
 host is offline, a timeout is filtering, or a changed banner is an update.
 
+`--events-output PATH` writes a bounded array of versioned FOREX events for a
+schema-2.0 scan. Events are deterministic and idempotent, remain local, and state
+truncation explicitly. They contain evidence, never vulnerability conclusions.
+
 ## Exit codes
 
 - `0`: scan and output completed successfully.
