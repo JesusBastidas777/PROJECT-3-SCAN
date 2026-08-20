@@ -21,6 +21,7 @@ from scanner.ports import scan_hosts
 from scanner.banners import collect_open_banners, DEFAULT_BANNER_WORKERS, DEFAULT_MAX_BYTES, DEFAULT_MAX_ENDPOINTS
 from scanner.report import build_report, serialize_report, utc_timestamp, write_report_atomic
 from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2
+from scanner.snapshots import save_snapshot
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -145,6 +146,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--banner-max-bytes", type=positive_integer, default=DEFAULT_MAX_BYTES)
     parser.add_argument("--banner-read-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     parser.add_argument("--schema-version", choices=SUPPORTED_REPORT_VERSIONS, default="1.0")
+    parser.add_argument("--history-dir", type=Path, help="opt-in immutable snapshot directory (schema 2.0 only)")
     return parser
 
 
@@ -206,6 +208,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         report = collect_report(args)
+        if args.history_dir is not None:
+            if args.schema_version != "2.0":
+                raise ValueError("--history-dir requires --schema-version 2.0")
+            _, snapshot_path = save_snapshot(report, args.history_dir)
+            print(f"SCAN: snapshot written to {snapshot_path}", file=sys.stderr)
         if args.output == "-":
             sys.stdout.write(serialize_report(report))
         else:

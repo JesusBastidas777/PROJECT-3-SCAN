@@ -123,6 +123,10 @@ Schema 1.0 remains the CLI default and is frozen for compatibility. Select the
 evidence-rich report contract with `--schema-version 2.0`. Version 2.0 separates
 assets, observations, stable errors, actual capabilities and scan configuration.
 
+`--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
+index. History is never deleted automatically and may retain sensitive banners;
+operators must apply suitable permissions and retention policy.
+
 ## Exit codes
 
 - `0`: scan and output completed successfully.
