@@ -31,6 +31,8 @@ from scanner.dns import collect_name_observations, MAX_DNS_WORKERS
 from scanner.retention import retain_snapshots
 from scanner.commands.compare import compare_main
 from scanner.profiles import apply_profile, PROFILES
+from scanner.event_io import write_events
+from scanner.events import MAX_EVENT_BYTES
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -190,6 +192,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lock-timeout", type=positive_float, default=5.0, metavar="SECONDS")
     parser.add_argument("--events-output", type=Path, help="write bounded FOREX event array (schema 2.0 only)")
     parser.add_argument("--max-events", type=positive_integer, default=256)
+    parser.add_argument("--events-format", choices=("legacy-json", "batch-json", "ndjson"), default="legacy-json")
+    parser.add_argument("--max-event-bytes", type=positive_integer, default=MAX_EVENT_BYTES)
+    parser.add_argument("--events-privacy", choices=("full", "hash-only"), default="full")
     parser.add_argument("--discovery", choices=("icmp", "icmp-tcp", "tcp"), default="icmp")
     parser.add_argument("--discovery-ports", type=parse_ports, default=[443, 80, 22], metavar="PORTS")
     parser.add_argument("--discovery-connect-timeout", type=positive_float, default=0.5, metavar="SECONDS")
@@ -297,7 +302,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.events_output is not None:
             if args.schema_version != "2.0":
                 raise ValueError("--events-output requires --schema-version 2.0")
-            write_report_atomic({"event_schema_version": "1.0", "events": events_from_report(report, max_events=args.max_events)}, args.events_output)
+            if str(args.events_output) == "-" and args.output == "-":
+                raise ValueError("report and events cannot both use stdout")
+            write_events(events_from_report(report, max_events=args.max_events), args.events_output, format_name=args.events_format, max_event_bytes=args.max_event_bytes, privacy=args.events_privacy)
             print(f"SCAN: events written to {args.events_output}", file=sys.stderr)
         if args.output == "-":
             sys.stdout.write(serialize_report(report))
@@ -311,6 +318,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("SCAN: interrupted", file=sys.stderr)
         return EXIT_INTERRUPTED
+    except BrokenPipeError:
+        return EXIT_SUCCESS
     except (OSError, ValueError) as exc:
         print(f"SCAN: operational error: {exc}", file=sys.stderr)
         return EXIT_OPERATIONAL_ERROR

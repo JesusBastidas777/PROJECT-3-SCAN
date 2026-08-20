@@ -15,6 +15,8 @@ dry-run, and never means that an asset vanished. Comparisons cover
 only common measured scope: missing data and unknown/error transitions remain
 indeterminate. `--events-output PATH` writes bounded event arrays; validate
 `event_schema_version` independently and deduplicate using `deduplication_key`.
+Events may instead use a versioned batch or NDJSON. Each event is validated
+before local output; delivery is deduplication-friendly, not exactly-once.
 
 - `open` means TCP connect succeeded, not vulnerability.
 - `closed` means an explicit refusal.

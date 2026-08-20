@@ -155,6 +155,10 @@ emits a deterministic `snapshot_comparison` 1.0 document without network probes.
 `--events-output PATH` writes a bounded array of versioned FOREX events for a
 schema-2.0 scan. Events are deterministic and idempotent, remain local, and state
 truncation explicitly. They contain evidence, never vulnerability conclusions.
+`--events-format legacy-json|batch-json|ndjson` preserves the legacy default and
+adds a versioned batch or one validated UTF-8 event per line. `--events-privacy
+hash-only` omits sensitive textual evidence where present. No remote transport is
+implemented.
 
 Detailed integration and migration guidance is in `docs/FOREX_INTEGRATION.md`
 and `docs/SCHEMA_MIGRATION.md`.
