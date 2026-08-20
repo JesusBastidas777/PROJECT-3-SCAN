@@ -151,3 +151,5 @@ python3 -m unittest discover -s tests -v
   not confirm which protocol or product is listening.
 - `--collect-banners` enables passive reads only on observed open endpoints. Banner
   bytes are bounded, untrusted, never authenticated, and schema 1.0 omits them.
+- Basic fingerprints are deterministic rules over collected evidence. They expose
+  their basis, confidence and rule ID and do not claim OS, product, CVE or risk.
