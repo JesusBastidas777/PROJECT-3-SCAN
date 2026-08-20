@@ -138,6 +138,9 @@ portable hard deadline.
 `--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
 index. History is never deleted automatically and may retain sensitive banners;
 operators must apply suitable permissions and retention policy.
+Snapshot writers use a finite-time portable lockfile. `SCAN history retain`
+plans deterministic retention in dry-run mode unless `--apply` is explicitly
+provided; retention is never triggered by a scan.
 
 Snapshot comparisons operate only on common measured scope. Missing endpoints and
 unknown/error transitions are explicitly indeterminate; they never assert that a

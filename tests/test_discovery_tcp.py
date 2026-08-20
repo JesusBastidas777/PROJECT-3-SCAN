@@ -12,12 +12,12 @@ from scanner.observations import tcp_observation
 
 class TcpDiscoveryTests(unittest.TestCase):
     def test_connected_refused_and_timeout_semantics(self):
-        values = [
-            tcp_observation(80, "open", "connected"),
-            tcp_observation(81, "closed", "connection_refused"),
-            tcp_observation(82, "unknown", "timeout", error_code="timeout"),
-        ]
-        with patch("scanner.discovery_tcp.scan_port", side_effect=values):
+        values = {
+            80: tcp_observation(80, "open", "connected"),
+            81: tcp_observation(81, "closed", "connection_refused"),
+            82: tcp_observation(82, "unknown", "timeout", error_code="timeout"),
+        }
+        with patch("scanner.discovery_tcp.scan_port", side_effect=lambda address, port, timeout: values[port]):
             found = collect_tcp_discovery(["192.0.2.1"], [80, 81, 82], timeout=.1, max_workers=2, max_endpoints=3)
         self.assertEqual([x["result"] for x in found], ["connected", "connection_refused", "timeout"])
         self.assertEqual(responsive_addresses(found), ["192.0.2.1"])

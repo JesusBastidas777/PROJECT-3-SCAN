@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 from pathlib import Path
 import sys
@@ -27,6 +28,7 @@ from scanner.events import events_from_report
 from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, reusable_endpoint_observations
 from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS, MAX_TLS_WORKERS
 from scanner.dns import collect_name_observations, MAX_DNS_WORKERS
+from scanner.retention import retain_snapshots
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -183,6 +185,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--banner-read-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     parser.add_argument("--schema-version", choices=SUPPORTED_REPORT_VERSIONS, default="1.0")
     parser.add_argument("--history-dir", type=Path, help="opt-in immutable snapshot directory (schema 2.0 only)")
+    parser.add_argument("--lock-timeout", type=positive_float, default=5.0, metavar="SECONDS")
     parser.add_argument("--events-output", type=Path, help="write bounded FOREX event array (schema 2.0 only)")
     parser.add_argument("--max-events", type=positive_integer, default=256)
     parser.add_argument("--discovery", choices=("icmp", "icmp-tcp", "tcp"), default="icmp")
@@ -271,14 +274,17 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run SCAN and return a documented process exit code."""
 
+    arguments = list(argv) if argv is not None else sys.argv[1:]
+    if arguments[:2] == ["history", "retain"]:
+        return history_retain_main(arguments[2:])
     parser = create_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
     try:
         report = collect_report(args)
         if args.history_dir is not None:
             if args.schema_version != "2.0":
                 raise ValueError("--history-dir requires --schema-version 2.0")
-            _, snapshot_path = save_snapshot(report, args.history_dir)
+            _, snapshot_path = save_snapshot(report, args.history_dir, lock_timeout=args.lock_timeout)
             print(f"SCAN: snapshot written to {snapshot_path}", file=sys.stderr)
         if args.events_output is not None:
             if args.schema_version != "2.0":
@@ -304,6 +310,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SCAN: unexpected failure: {exc}", file=sys.stderr)
         return EXIT_OPERATIONAL_ERROR
     return EXIT_SUCCESS
+
+
+def history_retain_main(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(prog="SCAN history retain")
+    parser.add_argument("--history-dir", type=Path, required=True)
+    parser.add_argument("--keep-last", type=positive_integer)
+    parser.add_argument("--max-age-days", type=positive_integer)
+    parser.add_argument("--lock-timeout", type=positive_float, default=5.0)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    args = parser.parse_args(argv)
+    if args.apply and args.dry_run:
+        parser.error("--apply and --dry-run are mutually exclusive")
+    try:
+        result = retain_snapshots(args.history_dir, keep_last=args.keep_last, max_age_days=args.max_age_days, dry_run=not args.apply, lock_timeout=args.lock_timeout)
+        sys.stdout.write(serialize_report(result))
+        return EXIT_SUCCESS
+    except (OSError, ValueError, TimeoutError, json.JSONDecodeError) as exc:
+        print(f"SCAN: operational error: {exc}", file=sys.stderr)
+        return EXIT_OPERATIONAL_ERROR
 
 
 if __name__ == "__main__":

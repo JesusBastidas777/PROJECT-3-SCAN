@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from scanner.contract import canonical_content, semantic_hash, validate_report_shape
+from scanner.locking import FileLock
 
 
 def build_snapshot(report: Mapping[str, Any], previous_snapshot_id: str | None = None) -> dict[str, Any]:
@@ -47,7 +48,7 @@ def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def save_snapshot(report: Mapping[str, Any], root: Path) -> tuple[dict[str, Any], Path]:
+def save_snapshot(report: Mapping[str, Any], root: Path, *, lock_timeout: float = 5.0) -> tuple[dict[str, Any], Path]:
     """Persist an immutable snapshot and atomically update its small index."""
 
     supplied_root = Path(root)
@@ -55,6 +56,11 @@ def save_snapshot(report: Mapping[str, Any], root: Path) -> tuple[dict[str, Any]
         raise OSError("snapshot root cannot be a symlink")
     root = supplied_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
+    with FileLock(root / ".scan-history.lock", timeout=lock_timeout):
+        return _save_snapshot_locked(report, root)
+
+
+def _save_snapshot_locked(report: Mapping[str, Any], root: Path) -> tuple[dict[str, Any], Path]:
     index_path = root / "index.json"
     if index_path.exists():
         try:

@@ -9,7 +9,9 @@ document; operational messages use stderr.
 open. Banners are untrusted and potentially sensitive. SCAN does not follow
 redirects, authenticate, send credentials, or pretend plain sockets support TLS.
 
-`--history-dir PATH` stores immutable schema-2.0 snapshots. Comparisons cover
+`--history-dir PATH` stores immutable schema-2.0 snapshots. Writes use a finite
+portable lock timeout. Retention is a separate explicit command, defaults to
+dry-run, and never means that an asset vanished. Comparisons cover
 only common measured scope: missing data and unknown/error transitions remain
 indeterminate. `--events-output PATH` writes bounded event arrays; validate
 `event_schema_version` independently and deduplicate using `deduplication_key`.
