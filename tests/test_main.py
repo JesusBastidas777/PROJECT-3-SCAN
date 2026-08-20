@@ -30,6 +30,7 @@ class CliTests(unittest.TestCase):
     def test_schema_version_selection_defaults_to_one(self):
         parser = scan_main.create_parser()
         self.assertEqual(parser.parse_args(["127.0.0.1"]).schema_version, "1.0")
+        self.assertEqual(parser.parse_args(["127.0.0.1"]).discovery, "icmp")
         self.assertEqual(parser.parse_args(["127.0.0.1", "--schema-version", "2.0"]).schema_version, "2.0")
 
     def test_help_exits_successfully(self):

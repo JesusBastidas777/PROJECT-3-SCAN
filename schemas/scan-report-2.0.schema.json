@@ -14,8 +14,8 @@
         "type": "object",
         "required": ["discovery_observation_id", "address", "ip_version", "method", "result"],
         "properties": {
-          "method": {"const": "icmp_echo"},
-          "result": {"enum": ["response", "no_response", "timeout", "probe_error", "unsupported"]},
+          "method": {"enum": ["icmp_echo", "tcp_connect"]},
+          "result": {"enum": ["response", "no_response", "timeout", "probe_error", "unsupported", "connected", "connection_refused", "unreachable", "error"]},
           "ip_version": {"enum": [4, 6]}
         }
       }

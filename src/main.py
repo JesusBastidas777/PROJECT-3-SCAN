@@ -24,6 +24,7 @@ from scanner.report import build_report, serialize_report, utc_timestamp, write_
 from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2
 from scanner.snapshots import save_snapshot
 from scanner.events import events_from_report
+from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, reusable_endpoint_observations
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -168,6 +169,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--history-dir", type=Path, help="opt-in immutable snapshot directory (schema 2.0 only)")
     parser.add_argument("--events-output", type=Path, help="write bounded FOREX event array (schema 2.0 only)")
     parser.add_argument("--max-events", type=positive_integer, default=256)
+    parser.add_argument("--discovery", choices=("icmp", "icmp-tcp", "tcp"), default="icmp")
+    parser.add_argument("--discovery-ports", type=parse_ports, default=[443, 80, 22], metavar="PORTS")
+    parser.add_argument("--discovery-connect-timeout", type=positive_float, default=0.5, metavar="SECONDS")
+    parser.add_argument("--max-discovery-endpoints", type=positive_integer, default=4096, metavar="COUNT")
     return parser
 
 
@@ -177,19 +182,25 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
     network = validate_network(args.target, max_hosts=args.max_hosts)
     timestamp = utc_timestamp()
     started = time.monotonic()
-    discovery_observations = discover_host_evidence(
-        network,
-        timeout=args.ping_timeout,
-        max_workers=args.workers,
-        max_hosts=args.max_hosts,
-    )
-    active_hosts = [item["address"] for item in discovery_observations if item["result"] == "response"]
+    discovery_mode = getattr(args, "discovery", "icmp")
+    discovery_observations = [] if discovery_mode == "tcp" else discover_host_evidence(network, timeout=args.ping_timeout, max_workers=args.workers, max_hosts=args.max_hosts)
+    candidates = [str(address) for address in network.hosts()]
+    if discovery_mode == "icmp-tcp":
+        candidates = [item["address"] for item in discovery_observations if item["result"] != "response"]
+    tcp_discovery = []
+    if discovery_mode in {"icmp-tcp", "tcp"}:
+        tcp_discovery = collect_tcp_discovery(candidates, getattr(args, "discovery_ports", [443, 80, 22]), timeout=getattr(args, "discovery_connect_timeout", 0.5), max_workers=args.workers, max_endpoints=getattr(args, "max_discovery_endpoints", 4096))
+        discovery_observations.extend(tcp_discovery)
+    active_hosts = responsive_addresses(discovery_observations)
     host_results = scan_hosts(
         active_hosts,
         args.ports,
         timeout=args.connect_timeout,
         max_workers=args.workers,
     )
+    reusable = reusable_endpoint_observations(tcp_discovery)
+    for host, observations in host_results.items():
+        host_results[host] = [reusable.get((host, int(item["port"])), item) for item in observations]
     if args.collect_banners:
         host_results = collect_open_banners(
             host_results, workers=min(args.banner_workers, 32),
@@ -209,6 +220,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             max_hosts=args.max_hosts, banners_enabled=args.collect_banners,
             banner_limits={"workers": min(args.banner_workers, 32), "max_endpoints": args.banner_max_endpoints, "max_bytes": args.banner_max_bytes, "read_timeout_seconds": args.banner_read_timeout},
             discovery_observations=discovery_observations,
+            discovery_configuration={"mode": discovery_mode, "ports": getattr(args, "discovery_ports", [443, 80, 22]), "connect_timeout_seconds": getattr(args, "discovery_connect_timeout", 0.5), "max_endpoints": getattr(args, "max_discovery_endpoints", 4096)},
         )
     return build_report(
         target_input=args.target,

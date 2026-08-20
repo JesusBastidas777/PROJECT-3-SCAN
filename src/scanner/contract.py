@@ -29,7 +29,7 @@ def canonical_content(report: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in report.items() if key not in excluded}
 
 
-def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any], discovery_observations: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any]:
+def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any], discovery_observations: Sequence[Mapping[str, Any]] = (), discovery_configuration: Mapping[str, Any] | None = None) -> dict[str, Any]:
     network_obj = ipaddress.ip_network(str(network), strict=False)
     configuration = {
         "ports": sorted(set(ports)), "discovery": "icmp", "workers": workers,
@@ -37,6 +37,8 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
         "connect_timeout_seconds": connect_timeout, "banners_enabled": banners_enabled,
         "banner_limits": dict(banner_limits) if banners_enabled else None,
     }
+    if discovery_configuration:
+        configuration["discovery_configuration"] = dict(discovery_configuration)
     scan_material = {"target": str(network_obj), "started_at": started_at, "configuration": configuration}
     scan_id = "scan_" + semantic_hash(scan_material)[:24]
     assets = build_inventory(network_obj, host_results)

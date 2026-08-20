@@ -22,6 +22,8 @@ indeterminate. `--events-output PATH` writes bounded event arrays; validate
 - Asset IDs identify scoped address observations, not physical devices.
 - Discovery observations preserve stable probe results. No response, timeout,
   unsupported tooling and probe errors never mean that an address is offline.
+- TCP fallback is opt-in. `connected` and `connection_refused` only establish a
+  response from that address during the measured probe; timeout is inconclusive.
 
 FOREX retains responsibility for correlation, risk and decisions. It must not
 infer host-down from absent ICMP, a CVE from banner text, or risk from an open port.

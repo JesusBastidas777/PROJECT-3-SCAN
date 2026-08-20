@@ -73,6 +73,9 @@ Options:
 - `--connect-timeout`: positive TCP connection timeout in seconds.
 - `--max-hosts`: safety limit. Targets with more candidate hosts are rejected
   before discovery begins.
+- `--discovery`: `icmp` preserves legacy behavior; `icmp-tcp` or `tcp` add
+  bounded TCP evidence. Refusal and connection are responses during that probe;
+  timeout remains inconclusive.
 - `--output`: JSON file path, or `-` for JSON on stdout. The default is
   `results/scan.json` relative to the repository, regardless of the current
   working directory. Explicit relative paths are resolved from the caller's
