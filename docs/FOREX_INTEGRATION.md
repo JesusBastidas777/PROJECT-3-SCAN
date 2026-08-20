@@ -26,6 +26,8 @@ indeterminate. `--events-output PATH` writes bounded event arrays; validate
   response from that address during the measured probe; timeout is inconclusive.
 - TLS metadata comes from an active, bounded handshake without SNI or certificate
   validation. Certificate hashes do not prove identity, ownership or security.
+- PTR observations are untrusted aliases and never device identity or ownership.
+  System-resolver timeouts are best-effort and recorded as such.
 
 FOREX retains responsibility for correlation, risk and decisions. It must not
 infer host-down from absent ICMP, a CVE from banner text, or risk from an open port.

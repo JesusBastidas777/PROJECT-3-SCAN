@@ -26,6 +26,7 @@ from scanner.snapshots import save_snapshot
 from scanner.events import events_from_report
 from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, reusable_endpoint_observations
 from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS, MAX_TLS_WORKERS
+from scanner.dns import collect_name_observations, MAX_DNS_WORKERS
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -122,6 +123,13 @@ def tls_worker_count(value: str) -> int:
     return parsed
 
 
+def dns_worker_count(value: str) -> int:
+    parsed = positive_integer(value)
+    if parsed > MAX_DNS_WORKERS:
+        raise argparse.ArgumentTypeError(f"DNS workers must be between 1 and {MAX_DNS_WORKERS}")
+    return parsed
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the SCAN argument parser."""
 
@@ -187,6 +195,10 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tls-max-endpoints", type=positive_integer, default=32)
     parser.add_argument("--tls-connect-timeout", type=positive_float, default=.5, metavar="SECONDS")
     parser.add_argument("--tls-handshake-timeout", type=positive_float, default=1.0, metavar="SECONDS")
+    parser.add_argument("--resolve-names", action="store_true")
+    parser.add_argument("--dns-workers", type=dns_worker_count, default=4)
+    parser.add_argument("--dns-timeout", type=positive_float, default=1.0, metavar="SECONDS")
+    parser.add_argument("--dns-max-assets", type=positive_integer, default=256)
     return parser
 
 
@@ -217,6 +229,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
         host_results[host] = [reusable.get((host, int(item["port"])), item) for item in observations]
     if getattr(args, "collect_tls", False):
         host_results = collect_open_tls(host_results, ports=args.tls_ports, workers=args.tls_workers, max_endpoints=args.tls_max_endpoints, connect_timeout=args.tls_connect_timeout, handshake_timeout=args.tls_handshake_timeout)
+    name_observations = collect_name_observations(active_hosts, workers=args.dns_workers, timeout=args.dns_timeout, max_assets=args.dns_max_assets) if getattr(args, "resolve_names", False) else []
     if args.collect_banners:
         host_results = collect_open_banners(
             host_results, workers=min(args.banner_workers, 32),
@@ -238,6 +251,8 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             discovery_observations=discovery_observations,
             discovery_configuration={"mode": discovery_mode, "ports": getattr(args, "discovery_ports", [443, 80, 22]), "connect_timeout_seconds": getattr(args, "discovery_connect_timeout", 0.5), "max_endpoints": getattr(args, "max_discovery_endpoints", 4096)},
             tls_configuration={"enabled": getattr(args, "collect_tls", False), "ports": getattr(args, "tls_ports", list(DEFAULT_TLS_PORTS)), "workers": getattr(args, "tls_workers", 4), "max_endpoints": getattr(args, "tls_max_endpoints", 32), "connect_timeout_seconds": getattr(args, "tls_connect_timeout", .5), "handshake_timeout_seconds": getattr(args, "tls_handshake_timeout", 1.0)},
+            name_observations=name_observations,
+            dns_configuration={"enabled": getattr(args, "resolve_names", False), "workers": getattr(args, "dns_workers", 4), "timeout_seconds": getattr(args, "dns_timeout", 1.0), "timeout_guarantee": "best_effort", "max_assets": getattr(args, "dns_max_assets", 256)},
         )
     return build_report(
         target_input=args.target,

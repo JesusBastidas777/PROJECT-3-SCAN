@@ -131,6 +131,9 @@ results assert that a host is offline.
 `--collect-tls` performs a bounded handshake only on selected open endpoints.
 It sends no application data and records unvalidated, untrusted metadata with a
 hash-only certificate representation; it makes no identity or security claim.
+`--resolve-names` records bounded PTR evidence using the system resolver. Names
+are untrusted aliases, and its timeout is explicitly best-effort rather than a
+portable hard deadline.
 
 `--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
 index. History is never deleted automatically and may retain sensitive banners;

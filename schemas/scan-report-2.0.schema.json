@@ -8,6 +8,18 @@
     "document_type": {"const": "scan_report"},
     "observations": {"type": "array"},
     "errors": {"type": "array"},
+    "name_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["address", "source", "status", "trusted"],
+        "properties": {
+          "source": {"const": "ptr"},
+          "status": {"enum": ["resolved", "no_name", "timeout", "error", "skipped"]},
+          "trusted": {"const": false}
+        }
+      }
+    },
     "discovery_observations": {
       "type": "array",
       "items": {

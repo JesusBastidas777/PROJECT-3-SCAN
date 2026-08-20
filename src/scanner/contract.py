@@ -29,7 +29,7 @@ def canonical_content(report: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in report.items() if key not in excluded}
 
 
-def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any], discovery_observations: Sequence[Mapping[str, Any]] = (), discovery_configuration: Mapping[str, Any] | None = None, tls_configuration: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any], discovery_observations: Sequence[Mapping[str, Any]] = (), discovery_configuration: Mapping[str, Any] | None = None, tls_configuration: Mapping[str, Any] | None = None, name_observations: Sequence[Mapping[str, Any]] = (), dns_configuration: Mapping[str, Any] | None = None) -> dict[str, Any]:
     network_obj = ipaddress.ip_network(str(network), strict=False)
     configuration = {
         "ports": sorted(set(ports)), "discovery": "icmp", "workers": workers,
@@ -41,6 +41,8 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
         configuration["discovery_configuration"] = dict(discovery_configuration)
     if tls_configuration:
         configuration["tls"] = dict(tls_configuration)
+    if dns_configuration:
+        configuration["dns"] = dict(dns_configuration)
     scan_material = {"target": str(network_obj), "started_at": started_at, "configuration": configuration}
     scan_id = "scan_" + semantic_hash(scan_material)[:24]
     assets = build_inventory(network_obj, host_results)
@@ -60,10 +62,11 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
         "started_at": started_at, "completed_at": completed_at, "duration_ms": duration_ms,
         "target": {"input": target_input, "network": str(network_obj), "target_id": target_id(network_obj), "ip_version": network_obj.version},
         "configuration": configuration,
-        "capabilities": {"tcp_connect": True, "ipv4": True, "ipv6": True, "service_hints": True, "passive_banners": banners_enabled, "tls_handshake": bool(tls_configuration and tls_configuration.get("enabled")), "fingerprints": True, "inventory": True},
+        "capabilities": {"tcp_connect": True, "ipv4": True, "ipv6": True, "service_hints": True, "passive_banners": banners_enabled, "tls_handshake": bool(tls_configuration and tls_configuration.get("enabled")), "reverse_dns": bool(dns_configuration and dns_configuration.get("enabled")), "fingerprints": True, "inventory": True},
         "summary": {"assets_observed": len(assets), "observations": len(observations), "states": state_counts, "errors": len(errors), "discovery": discovery_summary(list(discovery_observations))},
         "assets": assets, "observations": observations, "errors": errors,
         "discovery_observations": [dict(item) for item in discovery_observations],
+        "name_observations": [dict(item) for item in name_observations],
     }
 
 
