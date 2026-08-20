@@ -50,5 +50,6 @@ def validate_event(event: Mapping[str, Any]) -> None:
     required = {"event_schema_version", "event_id", "event_type", "occurred_at", "producer", "scan_id", "target_id", "subject", "observation", "evidence_refs", "confidence", "limitations", "deduplication_key"}
     if event.get("event_schema_version") != EVENT_SCHEMA_VERSION or required - event.keys():
         raise ValueError("invalid FOREX event")
-    if len(str(event).encode("utf-8")) > MAX_EVENT_BYTES:
+    from scanner.contract import canonical_json
+    if len(canonical_json(event).encode("utf-8")) > MAX_EVENT_BYTES:
         raise ValueError("FOREX event exceeds payload limit")

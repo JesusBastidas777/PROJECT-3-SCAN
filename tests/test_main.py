@@ -74,6 +74,9 @@ class CliTests(unittest.TestCase):
             ["127.0.0.1", "--ping-timeout", "0"],
             ["127.0.0.1", "--connect-timeout", "nan"],
             ["127.0.0.1", "--max-hosts", "0"],
+            ["127.0.0.1", "--banner-workers", "33"],
+            ["127.0.0.1", "--banner-max-bytes", "65537"],
+            ["127.0.0.1", "--ports", ",".join(str(value) for value in range(1, 1026))],
         ]
         for arguments in cases:
             with self.subTest(arguments=arguments), patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit) as raised:

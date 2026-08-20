@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import ipaddress
-from concurrent.futures import ThreadPoolExecutor
-
 from scanner.ping import ping_host
+from scanner.concurrency import bounded_ordered_calls
 
 DEFAULT_MAX_HOSTS = 4096
 DEFAULT_DISCOVERY_WORKERS = 64
@@ -80,15 +79,9 @@ def discover_hosts(
 
     workers = _worker_count(max_workers, len(hosts))
     active_hosts: list[str] = []
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [executor.submit(ping_host, host, timeout) for host in hosts]
-        for host, future in zip(hosts, futures):
-            try:
-                if future.result():
-                    active_hosts.append(str(host))
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                continue
+    results = bounded_ordered_calls(ping_host, [(host, timeout) for host in hosts], max_workers=workers)
+    for host, result in zip(hosts, results):
+        if result is True:
+            active_hosts.append(str(host))
 
     return active_hosts

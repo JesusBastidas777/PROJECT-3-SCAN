@@ -5,10 +5,10 @@ from __future__ import annotations
 import ipaddress
 import socket
 import errno
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterable
 
 from scanner.observations import tcp_observation
+from scanner.concurrency import bounded_ordered_calls
 
 DEFAULT_PORT_WORKERS = 64
 MAX_PORT_WORKERS = 256
@@ -101,19 +101,8 @@ def scan_ports(
         return []
 
     workers = _worker_count(max_workers, len(normalized_ports))
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [
-            executor.submit(scan_port, ip, port, timeout) for port in normalized_ports
-        ]
-        results: list[dict[str, object]] = []
-        for port, future in zip(normalized_ports, futures):
-            try:
-                results.append(future.result())
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                results.append(_worker_error(port))
-    return results
+    values = bounded_ordered_calls(scan_port, [(ip, port, timeout) for port in normalized_ports], max_workers=workers)
+    return [_worker_error(port) if isinstance(value, Exception) else value for port, value in zip(normalized_ports, values)]
 
 
 def scan_hosts(
@@ -143,16 +132,8 @@ def scan_hosts(
         return results
 
     workers = _worker_count(max_workers, task_count)
-    tasks: list[tuple[str, int, object]] = []
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        for host in normalized_hosts:
-            for port in normalized_ports:
-                tasks.append((host, port, executor.submit(scan_port, host, port, timeout)))
-        for host, port, future in tasks:
-            try:
-                results[host].append(future.result())
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                results[host].append(_worker_error(port))
+    tasks = [(host, port, timeout) for host in normalized_hosts for port in normalized_ports]
+    values = bounded_ordered_calls(scan_port, tasks, max_workers=workers)
+    for (host, port, _), value in zip(tasks, values):
+        results[host].append(_worker_error(port) if isinstance(value, Exception) else value)
     return results

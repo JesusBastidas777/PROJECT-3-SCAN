@@ -28,6 +28,7 @@ DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
 DEFAULT_PING_TIMEOUT = 1.0
 DEFAULT_CONNECT_TIMEOUT = 1.0
+MAX_PORTS = 1024
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "results" / "scan.json"
 
@@ -54,6 +55,8 @@ def parse_ports(value: str) -> list[int]:
         if port not in seen:
             seen.add(port)
             ports.append(port)
+        if len(ports) > MAX_PORTS:
+            raise argparse.ArgumentTypeError(f"no more than {MAX_PORTS} unique ports are allowed")
     return ports
 
 
@@ -92,6 +95,20 @@ def positive_integer(value: str) -> int:
         raise argparse.ArgumentTypeError("must be an integer") from exc
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def banner_worker_count(value: str) -> int:
+    parsed = positive_integer(value)
+    if parsed > 32:
+        raise argparse.ArgumentTypeError("banner workers must be between 1 and 32")
+    return parsed
+
+
+def banner_byte_limit(value: str) -> int:
+    parsed = positive_integer(value)
+    if parsed > 65536:
+        raise argparse.ArgumentTypeError("banner bytes must be between 1 and 65536")
     return parsed
 
 
@@ -142,9 +159,9 @@ def create_parser() -> argparse.ArgumentParser:
         help="reject targets with more candidate hosts",
     )
     parser.add_argument("--collect-banners", action="store_true", help="passively collect bounded, untrusted banners from open endpoints")
-    parser.add_argument("--banner-workers", type=worker_count, default=DEFAULT_BANNER_WORKERS)
+    parser.add_argument("--banner-workers", type=banner_worker_count, default=DEFAULT_BANNER_WORKERS)
     parser.add_argument("--banner-max-endpoints", type=positive_integer, default=DEFAULT_MAX_ENDPOINTS)
-    parser.add_argument("--banner-max-bytes", type=positive_integer, default=DEFAULT_MAX_BYTES)
+    parser.add_argument("--banner-max-bytes", type=banner_byte_limit, default=DEFAULT_MAX_BYTES)
     parser.add_argument("--banner-read-timeout", type=positive_float, default=0.5, metavar="SECONDS")
     parser.add_argument("--schema-version", choices=SUPPORTED_REPORT_VERSIONS, default="1.0")
     parser.add_argument("--history-dir", type=Path, help="opt-in immutable snapshot directory (schema 2.0 only)")

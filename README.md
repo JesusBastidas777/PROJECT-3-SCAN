@@ -135,6 +135,9 @@ host is offline, a timeout is filtering, or a changed banner is an update.
 schema-2.0 scan. Events are deterministic and idempotent, remain local, and state
 truncation explicitly. They contain evidence, never vulnerability conclusions.
 
+Detailed integration and migration guidance is in `docs/FOREX_INTEGRATION.md`
+and `docs/SCHEMA_MIGRATION.md`.
+
 ## Exit codes
 
 - `0`: scan and output completed successfully.
