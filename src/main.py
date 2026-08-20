@@ -15,6 +15,7 @@ from scanner.discovery import (
     MAX_DISCOVERY_WORKERS,
     TargetValidationError,
     discover_hosts,
+    discover_host_evidence,
     validate_network,
 )
 from scanner.ports import scan_hosts
@@ -176,12 +177,13 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
     network = validate_network(args.target, max_hosts=args.max_hosts)
     timestamp = utc_timestamp()
     started = time.monotonic()
-    active_hosts = discover_hosts(
+    discovery_observations = discover_host_evidence(
         network,
         timeout=args.ping_timeout,
         max_workers=args.workers,
         max_hosts=args.max_hosts,
     )
+    active_hosts = [item["address"] for item in discovery_observations if item["result"] == "response"]
     host_results = scan_hosts(
         active_hosts,
         args.ports,
@@ -206,6 +208,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             connect_timeout=args.connect_timeout, workers=args.workers,
             max_hosts=args.max_hosts, banners_enabled=args.collect_banners,
             banner_limits={"workers": min(args.banner_workers, 32), "max_endpoints": args.banner_max_endpoints, "max_bytes": args.banner_max_bytes, "read_timeout_seconds": args.banner_read_timeout},
+            discovery_observations=discovery_observations,
         )
     return build_report(
         target_input=args.target,

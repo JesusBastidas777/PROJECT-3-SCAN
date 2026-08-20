@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from scanner.inventory import build_inventory, target_id
+from scanner.discovery_evidence import discovery_summary
 
 SUPPORTED_REPORT_VERSIONS = ("1.0", "2.0")
 
@@ -28,7 +29,7 @@ def canonical_content(report: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in report.items() if key not in excluded}
 
 
-def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any]) -> dict[str, Any]:
+def build_report_v2(*, target_input: str, network: object, host_results: Mapping[str, Sequence[Mapping[str, Any]]], ports: Sequence[int], started_at: str, completed_at: str, duration_ms: int, ping_timeout: float, connect_timeout: float, workers: int, max_hosts: int, banners_enabled: bool, banner_limits: Mapping[str, Any], discovery_observations: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any]:
     network_obj = ipaddress.ip_network(str(network), strict=False)
     configuration = {
         "ports": sorted(set(ports)), "discovery": "icmp", "workers": workers,
@@ -56,8 +57,9 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
         "target": {"input": target_input, "network": str(network_obj), "target_id": target_id(network_obj), "ip_version": network_obj.version},
         "configuration": configuration,
         "capabilities": {"tcp_connect": True, "ipv4": True, "ipv6": True, "service_hints": True, "passive_banners": banners_enabled, "fingerprints": True, "inventory": True},
-        "summary": {"assets_observed": len(assets), "observations": len(observations), "states": state_counts, "errors": len(errors)},
+        "summary": {"assets_observed": len(assets), "observations": len(observations), "states": state_counts, "errors": len(errors), "discovery": discovery_summary(list(discovery_observations))},
         "assets": assets, "observations": observations, "errors": errors,
+        "discovery_observations": [dict(item) for item in discovery_observations],
     }
 
 

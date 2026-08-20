@@ -7,6 +7,18 @@
     "schema_version": {"const": "2.0"},
     "document_type": {"const": "scan_report"},
     "observations": {"type": "array"},
-    "errors": {"type": "array"}
+    "errors": {"type": "array"},
+    "discovery_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["discovery_observation_id", "address", "ip_version", "method", "result"],
+        "properties": {
+          "method": {"const": "icmp_echo"},
+          "result": {"enum": ["response", "no_response", "timeout", "probe_error", "unsupported"]},
+          "ip_version": {"enum": [4, 6]}
+        }
+      }
+    }
   }
 }

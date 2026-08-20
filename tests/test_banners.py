@@ -11,7 +11,10 @@ from scanner.banners import collect_banner, collect_open_banners
 
 class LocalBannerServer:
     def __init__(self, payload: bytes, family=socket.AF_INET):
-        self.socket = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            self.socket = socket.socket(family, socket.SOCK_STREAM)
+        except PermissionError:
+            raise unittest.SkipTest("sandbox prohibits loopback sockets")
         host = "127.0.0.1" if family == socket.AF_INET else "::1"
         self.socket.bind((host, 0))
         self.socket.listen(1)

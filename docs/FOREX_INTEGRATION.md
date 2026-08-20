@@ -20,6 +20,8 @@ indeterminate. `--events-output PATH` writes bounded event arrays; validate
 - `error` is a local/worker probe failure.
 - Service hints do not confirm protocols; banners do not confirm products.
 - Asset IDs identify scoped address observations, not physical devices.
+- Discovery observations preserve stable probe results. No response, timeout,
+  unsupported tooling and probe errors never mean that an address is offline.
 
 FOREX retains responsibility for correlation, risk and decisions. It must not
 infer host-down from absent ICMP, a CVE from banner text, or risk from an open port.

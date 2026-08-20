@@ -122,6 +122,9 @@ complete schema-v1 document with empty `hosts` and zero summary counters.
 Schema 1.0 remains the CLI default and is frozen for compatibility. Select the
 evidence-rich report contract with `--schema-version 2.0`. Version 2.0 separates
 assets, observations, stable errors, actual capabilities and scan configuration.
+It also records ordered ICMP discovery evidence, distinguishing response,
+no-response, timeout, unsupported tooling and stable probe errors. None of these
+results assert that a host is offline.
 
 `--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
 index. History is never deleted automatically and may retain sensitive banners;

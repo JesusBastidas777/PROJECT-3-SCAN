@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import ipaddress
-from scanner.ping import ping_host
+from scanner.ping import ping_host, ping_evidence
+from scanner.discovery_evidence import discovery_observation
 from scanner.concurrency import bounded_ordered_calls
 
 DEFAULT_MAX_HOSTS = 4096
@@ -85,3 +86,18 @@ def discover_hosts(
             active_hosts.append(str(host))
 
     return active_hosts
+
+
+def discover_host_evidence(network: object, *, timeout: float = 1.0, max_workers: int = DEFAULT_DISCOVERY_WORKERS, max_hosts: int = DEFAULT_MAX_HOSTS) -> list[dict[str, object]]:
+    """Collect one ordered, structured ICMP observation per candidate address."""
+
+    network_obj = validate_network(network, max_hosts=max_hosts)
+    hosts = list(network_obj.hosts())
+    if not hosts:
+        return []
+    workers = _worker_count(max_workers, len(hosts))
+    results = bounded_ordered_calls(ping_evidence, [(host, timeout) for host in hosts], max_workers=workers)
+    return [
+        discovery_observation(host, "probe_error", error_code="worker_error") if isinstance(result, Exception) else result
+        for host, result in zip(hosts, results)
+    ]

@@ -117,7 +117,7 @@ class CliTests(unittest.TestCase):
     @patch("main.time.monotonic", side_effect=[10.0, 10.025])
     @patch("main.utc_timestamp", return_value="2026-08-19T00:00:00.000Z")
     @patch("main.scan_hosts", return_value={"127.0.0.1": []})
-    @patch("main.discover_hosts", return_value=["127.0.0.1"])
+    @patch("main.discover_host_evidence", return_value=[{"address": "127.0.0.1", "result": "response"}])
     def test_collection_builds_nonnegative_duration(self, _discover, _scan, _timestamp, _clock):
         args = argparse.Namespace(
             target="127.0.0.1/32", ports=[22], workers=2,
