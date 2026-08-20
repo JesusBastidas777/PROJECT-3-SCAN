@@ -40,7 +40,9 @@ class ScanPortTests(unittest.TestCase):
         with patch("scanner.ports.socket.socket", return_value=fake) as factory:
             result = scan_port("127.0.0.1", 80, timeout=0.25)
 
-        self.assertEqual(result["status"], "OPEN")
+        self.assertEqual(result["state"], "open")
+        self.assertEqual(result["state_evidence"]["result"], "connected")
+        self.assertEqual(result["service"]["confidence"], "hint")
         self.assertEqual(fake.timeout, 0.25)
         self.assertTrue(fake.closed)
         factory.assert_called_once_with(socket.AF_INET, socket.SOCK_STREAM)
@@ -48,26 +50,26 @@ class ScanPortTests(unittest.TestCase):
     def test_connection_refused_is_closed(self):
         fake = FakeSocket(result=111)
         with patch("scanner.ports.socket.socket", return_value=fake):
-            self.assertEqual(scan_port("127.0.0.1", 81)["status"], "CLOSED")
+            self.assertEqual(scan_port("127.0.0.1", 81)["state"], "closed")
         self.assertTrue(fake.closed)
 
     def test_timeout_is_closed_and_socket_is_closed(self):
         fake = FakeSocket(error=socket.timeout("timed out"))
         with patch("scanner.ports.socket.socket", return_value=fake):
-            self.assertEqual(scan_port("127.0.0.1", 81)["status"], "CLOSED")
+            self.assertEqual(scan_port("127.0.0.1", 81)["state"], "unknown")
         self.assertTrue(fake.closed)
 
     def test_socket_exception_is_closed_and_socket_is_closed(self):
         fake = FakeSocket(error=OSError("network error"))
         with patch("scanner.ports.socket.socket", return_value=fake):
-            self.assertEqual(scan_port("127.0.0.1", 81)["status"], "CLOSED")
+            self.assertEqual(scan_port("127.0.0.1", 81)["state"], "error")
         self.assertTrue(fake.closed)
 
     def test_ipv6_uses_ipv6_socket_and_endpoint(self):
         fake = FakeSocket(result=0)
         with patch("scanner.ports.socket.socket", return_value=fake) as factory:
             result = scan_port("::1", 443)
-        self.assertEqual(result["status"], "OPEN")
+        self.assertEqual(result["state"], "open")
         factory.assert_called_once_with(socket.AF_INET6, socket.SOCK_STREAM)
         self.assertEqual(fake.endpoint, ("::1", 443, 0, 0))
 
@@ -85,7 +87,7 @@ class ScanPortTests(unittest.TestCase):
                 release.wait(0.1)
             else:
                 release.set()
-            return {"port": port, "protocol": "tcp", "status": "CLOSED"}
+            return {"port": port, "transport": "tcp", "state": "closed"}
 
         scan.side_effect = result
         results = scan_ports("127.0.0.1", [80, 22, 80, 443], max_workers=3)
@@ -94,16 +96,16 @@ class ScanPortTests(unittest.TestCase):
 
     @patch("scanner.ports.scan_port")
     def test_failed_future_does_not_abort_host(self, scan):
-        scan.side_effect = [RuntimeError("failure"), {"port": 80, "protocol": "tcp", "status": "OPEN"}]
+        scan.side_effect = [RuntimeError("failure"), {"port": 80, "transport": "tcp", "state": "open"}]
         results = scan_ports("127.0.0.1", [22, 80], max_workers=2)
-        self.assertEqual([item["status"] for item in results], ["CLOSED", "OPEN"])
+        self.assertEqual([item["state"] for item in results], ["error", "open"])
 
     @patch("scanner.ports.scan_port")
     def test_multi_host_scan_uses_one_global_executor_and_preserves_order(self, scan):
         scan.side_effect = lambda host, port, timeout: {
             "port": port,
             "protocol": "tcp",
-            "status": "OPEN" if host == "127.0.0.1" else "CLOSED",
+            "state": "open" if host == "127.0.0.1" else "closed",
         }
         results = scan_hosts(["127.0.0.1", "::1"], [443, 22], max_workers=2)
         self.assertEqual(list(results), ["127.0.0.1", "::1"])

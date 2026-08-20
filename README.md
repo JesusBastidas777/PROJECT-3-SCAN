@@ -145,3 +145,7 @@ python3 -m unittest discover -s tests -v
   implementation.
 - SCAN performs connection checks only. It does not identify services, versions,
   CVEs, vulnerabilities, or security risk.
+- Internally SCAN distinguishes open, closed, unknown, and probe-error TCP
+  observations. Schema 1.0 retains its historical OPEN/CLOSED projection.
+- Conventional service names are low-confidence port-registry hints only; they do
+  not confirm which protocol or product is listening.

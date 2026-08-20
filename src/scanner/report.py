@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from scanner.discovery import candidate_host_count, normalize_network
+from scanner.observations import legacy_port_result
 
 SCHEMA_VERSION = "1.0"
 SCANNER_NAME = "SCAN"
@@ -31,7 +32,10 @@ def utc_timestamp(now: datetime | None = None) -> str:
 def build_host_report(host: str, ports: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Build one deterministic host record from TCP scan facts."""
 
-    port_records = [dict(port) for port in ports]
+    port_records = [
+        dict(port) if "status" in port else legacy_port_result(dict(port))
+        for port in ports
+    ]
     open_ports = [port["port"] for port in port_records if port["status"] == "OPEN"]
     closed_count = sum(port["status"] == "CLOSED" for port in port_records)
     error_count = len(port_records) - len(open_ports) - closed_count

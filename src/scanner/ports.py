@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import errno
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterable
+
+from scanner.observations import tcp_observation
 
 DEFAULT_PORT_WORKERS = 64
 MAX_PORT_WORKERS = 256
@@ -41,12 +44,12 @@ def _worker_count(requested: int, task_count: int) -> int:
     return min(requested, MAX_PORT_WORKERS, max(1, task_count))
 
 
-def _closed_result(port: int) -> dict[str, object]:
-    return {"port": port, "protocol": "tcp", "status": "CLOSED"}
+def _worker_error(port: int) -> dict[str, object]:
+    return tcp_observation(port, "error", "worker_error", error_code="worker_error")
 
 
 def scan_port(ip: object, port: int, timeout: float = 1.0) -> dict[str, object]:
-    """Scan one TCP port and return the legacy structured result."""
+    """Scan one TCP port and return normalized evidence."""
 
     port = _validate_port(port)
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
@@ -55,7 +58,7 @@ def scan_port(ip: object, port: int, timeout: float = 1.0) -> dict[str, object]:
     try:
         address = ipaddress.ip_address(str(ip))
     except (TypeError, ValueError):
-        return _closed_result(port)
+        return tcp_observation(port, "error", "invalid_address", error_code="invalid_address")
 
     family = socket.AF_INET if address.version == 4 else socket.AF_INET6
     endpoint = (str(address), port) if family == socket.AF_INET else (str(address), port, 0, 0)
@@ -64,14 +67,24 @@ def scan_port(ip: object, port: int, timeout: float = 1.0) -> dict[str, object]:
         with socket.socket(family, socket.SOCK_STREAM) as sock:
             sock.settimeout(timeout)
             result = sock.connect_ex(endpoint)
-    except (OSError, ValueError):
-        return _closed_result(port)
+    except socket.timeout:
+        return tcp_observation(port, "unknown", "timeout", error_code="timeout")
+    except ValueError:
+        return tcp_observation(port, "error", "local_error", error_code="local_error")
+    except OSError as exc:
+        if exc.errno in {errno.ENETUNREACH, errno.EHOSTUNREACH}:
+            return tcp_observation(port, "unknown", "unreachable", error_code="unreachable")
+        return tcp_observation(port, "error", "local_error", error_code="local_error")
 
-    return {
-        "port": port,
-        "protocol": "tcp",
-        "status": "OPEN" if result == 0 else "CLOSED",
-    }
+    if result == 0:
+        return tcp_observation(port, "open", "connected")
+    if result in {errno.ECONNREFUSED, 10061}:
+        return tcp_observation(port, "closed", "connection_refused")
+    if result in {errno.ETIMEDOUT, 10060}:
+        return tcp_observation(port, "unknown", "timeout", error_code="timeout")
+    if result in {errno.ENETUNREACH, errno.EHOSTUNREACH, 10051, 10065}:
+        return tcp_observation(port, "unknown", "unreachable", error_code="unreachable")
+    return tcp_observation(port, "unknown", "connect_failed", error_code="connect_failed")
 
 
 def scan_ports(
@@ -99,7 +112,7 @@ def scan_ports(
             except KeyboardInterrupt:
                 raise
             except Exception:
-                results.append(_closed_result(port))
+                results.append(_worker_error(port))
     return results
 
 
@@ -141,5 +154,5 @@ def scan_hosts(
             except KeyboardInterrupt:
                 raise
             except Exception:
-                results[host].append(_closed_result(port))
+                results[host].append(_worker_error(port))
     return results
