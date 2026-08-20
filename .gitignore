@@ -21,3 +21,7 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Generated scan results
+results/*
+!results/.gitkeep

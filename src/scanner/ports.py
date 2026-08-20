@@ -1,72 +1,145 @@
+"""Bounded concurrent TCP port scanning."""
 
+from __future__ import annotations
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+import ipaddress
 import socket
-
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Iterable
+
+DEFAULT_PORT_WORKERS = 64
+MAX_PORT_WORKERS = 256
 
 
-def scan_port(ip, port):
+def _validate_port(port: object) -> int:
+    if isinstance(port, bool) or not isinstance(port, int):
+        raise ValueError(f"port must be an integer: {port!r}")
+    if not 1 <= port <= 65535:
+        raise ValueError(f"port must be between 1 and 65535: {port}")
+    return port
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    result = sock.connect_ex((str(ip), port))
+def _normalize_ports(ports: Iterable[object]) -> list[int]:
+    normalized: list[int] = []
+    seen: set[int] = set()
+    try:
+        iterator = iter(ports)
+    except TypeError as exc:
+        raise ValueError("ports must be an iterable of integers") from exc
 
-    sock.close()
+    for value in iterator:
+        port = _validate_port(value)
+        if port not in seen:
+            seen.add(port)
+            normalized.append(port)
+    return normalized
+
+
+def _worker_count(requested: int, task_count: int) -> int:
+    if isinstance(requested, bool) or not isinstance(requested, int) or requested < 1:
+        raise ValueError("port workers must be a positive integer")
+    return min(requested, MAX_PORT_WORKERS, max(1, task_count))
+
+
+def _closed_result(port: int) -> dict[str, object]:
+    return {"port": port, "protocol": "tcp", "status": "CLOSED"}
+
+
+def scan_port(ip: object, port: int, timeout: float = 1.0) -> dict[str, object]:
+    """Scan one TCP port and return the legacy structured result."""
+
+    port = _validate_port(port)
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        raise ValueError("connection timeout must be a positive number")
+
+    try:
+        address = ipaddress.ip_address(str(ip))
+    except (TypeError, ValueError):
+        return _closed_result(port)
+
+    family = socket.AF_INET if address.version == 4 else socket.AF_INET6
+    endpoint = (str(address), port) if family == socket.AF_INET else (str(address), port, 0, 0)
+
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            result = sock.connect_ex(endpoint)
+    except (OSError, ValueError):
+        return _closed_result(port)
 
     return {
         "port": port,
         "protocol": "tcp",
-        "status": "OPEN" if result == 0 else "CLOSED"
+        "status": "OPEN" if result == 0 else "CLOSED",
     }
 
 
-def scan_ports(ip, ports):
+def scan_ports(
+    ip: object,
+    ports: Iterable[object],
+    *,
+    timeout: float = 1.0,
+    max_workers: int = DEFAULT_PORT_WORKERS,
+) -> list[dict[str, object]]:
+    """Scan unique ports on one host while preserving their input order."""
 
-    results = []
+    normalized_ports = _normalize_ports(ports)
+    if not normalized_ports:
+        return []
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-
+    workers = _worker_count(max_workers, len(normalized_ports))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
-
-            executor.submit(scan_port, ip, port)
-
-            for port in ports
-
+            executor.submit(scan_port, ip, port, timeout) for port in normalized_ports
         ]
-
-        for future in futures:
-
-            results.append(future.result())
-
+        results: list[dict[str, object]] = []
+        for port, future in zip(normalized_ports, futures):
+            try:
+                results.append(future.result())
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                results.append(_closed_result(port))
     return results
 
 
+def scan_hosts(
+    hosts: Iterable[object],
+    ports: Iterable[object],
+    *,
+    timeout: float = 1.0,
+    max_workers: int = DEFAULT_PORT_WORKERS,
+) -> dict[str, list[dict[str, object]]]:
+    """Scan multiple hosts using one globally bounded executor."""
 
+    normalized_hosts: list[str] = []
+    seen_hosts: set[str] = set()
+    for host in hosts:
+        try:
+            normalized = str(ipaddress.ip_address(str(host)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid host: {host!r}") from exc
+        if normalized not in seen_hosts:
+            seen_hosts.add(normalized)
+            normalized_hosts.append(normalized)
 
+    normalized_ports = _normalize_ports(ports)
+    results = {host: [] for host in normalized_hosts}
+    task_count = len(normalized_hosts) * len(normalized_ports)
+    if task_count == 0:
+        return results
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    workers = _worker_count(max_workers, task_count)
+    tasks: list[tuple[str, int, object]] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        for host in normalized_hosts:
+            for port in normalized_ports:
+                tasks.append((host, port, executor.submit(scan_port, host, port, timeout)))
+        for host, port, future in tasks:
+            try:
+                results[host].append(future.result())
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                results[host].append(_closed_result(port))
+    return results

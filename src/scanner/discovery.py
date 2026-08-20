@@ -1,31 +1,83 @@
+"""Concurrent ICMP host discovery."""
 
-
+from __future__ import annotations
 
 import ipaddress
+from concurrent.futures import ThreadPoolExecutor
 
 from scanner.ping import ping_host
 
-def discover_hosts(network):
+DEFAULT_MAX_HOSTS = 4096
+DEFAULT_DISCOVERY_WORKERS = 64
+MAX_DISCOVERY_WORKERS = 256
 
-    network_obj = ipaddress.ip_network(network)
 
-    active_hosts = []
+class TargetValidationError(ValueError):
+    """Raised when a scan target cannot be safely normalized."""
 
-    for ip in network_obj.hosts():
 
-        if ping_host(ip):
+class NetworkTooLargeError(TargetValidationError):
+    """Raised when a target exceeds the configured host limit."""
 
-            print("Host Active")
 
-            active_hosts.append(str(ip))
+def normalize_network(target: object) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    """Parse a target, consistently clearing any CIDR host bits."""
+
+    try:
+        return ipaddress.ip_network(str(target), strict=False)
+    except (TypeError, ValueError) as exc:
+        raise TargetValidationError(f"invalid target: {target!r}") from exc
+
+
+def _usable_host_count(
+    network: ipaddress.IPv4Network | ipaddress.IPv6Network,
+) -> int:
+    if network.version == 4:
+        return network.num_addresses if network.prefixlen >= 31 else network.num_addresses - 2
+    return network.num_addresses if network.prefixlen >= 127 else network.num_addresses - 1
+
+
+def _worker_count(requested: int, task_count: int) -> int:
+    if isinstance(requested, bool) or not isinstance(requested, int) or requested < 1:
+        raise ValueError("discovery workers must be a positive integer")
+    return min(requested, MAX_DISCOVERY_WORKERS, max(1, task_count))
+
+
+def discover_hosts(
+    network: object,
+    *,
+    timeout: float = 1.0,
+    max_workers: int = DEFAULT_DISCOVERY_WORKERS,
+    max_hosts: int = DEFAULT_MAX_HOSTS,
+) -> list[str]:
+    """Discover responsive hosts in *network* with bounded concurrency."""
+
+    network_obj = normalize_network(network)
+    if isinstance(max_hosts, bool) or not isinstance(max_hosts, int) or max_hosts < 1:
+        raise ValueError("max_hosts must be a positive integer")
+
+    host_count = _usable_host_count(network_obj)
+    if host_count > max_hosts:
+        raise NetworkTooLargeError(
+            f"target {network_obj} contains {host_count} usable hosts; "
+            f"configured limit is {max_hosts}"
+        )
+
+    hosts = list(network_obj.hosts())
+    if not hosts:
+        return []
+
+    workers = _worker_count(max_workers, len(hosts))
+    active_hosts: list[str] = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(ping_host, host, timeout) for host in hosts]
+        for host, future in zip(hosts, futures):
+            try:
+                if future.result():
+                    active_hosts.append(str(host))
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                continue
 
     return active_hosts
-
-
-
-
-
-
-
-
-
