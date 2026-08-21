@@ -28,7 +28,7 @@ def _event(event_type: str, report: Mapping[str, Any], subject: Mapping[str, Any
 
 
 def events_from_report(report: Mapping[str, Any], *, max_events: int = 256) -> list[dict[str, Any]]:
-    if report.get("schema_version") not in {"2.0", "2.1"} or max_events < 1:
+    if report.get("schema_version") not in {"2.0", "2.1", "2.2"} or max_events < 1:
         raise ValueError("events require report schema 2.0/2.1 and a positive limit")
     candidates = []
     candidates.append(_event("scan.completed", report, {"target_id": report["target"]["target_id"]}, {"summary": report["summary"]}))

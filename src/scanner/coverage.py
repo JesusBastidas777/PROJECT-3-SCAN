@@ -165,6 +165,8 @@ def build_coverage(
 
 
 def validate_coverage(value: Mapping[str, Any]) -> None:
+    if value.get("model_version")=="2.0":
+        return validate_coverage_v2(value)
     if value.get("model_version") != "1.0" or list(value.get("phases", {})) != list(PHASE_ORDER):
         raise ValueError("invalid coverage model")
     for name, phase in value["phases"].items():
@@ -175,3 +177,22 @@ def validate_coverage(value: Mapping[str, Any]) -> None:
             eligible=phase.get("eligible"), attempted=phase.get("attempted"), observed=phase.get("observed"), skipped=phase.get("skipped"), timeout=phase.get("timeout"), error=phase.get("error"),
             truncated=bool(phase.get("truncated")), effective_limits=phase.get("effective_limits", {}), reason=phase["support"].get("reason"), evidence_refs=phase.get("evidence_refs", ()), error_refs=phase.get("error_refs", ()),
         )
+
+def coverage_v2(legacy: Mapping[str,Any], *, termination: Mapping[str,Any]|None=None, excluded: int=0, budget: Mapping[str,Any]|None=None) -> dict[str,Any]:
+    """Upgrade runtime coverage without turning omissions into probe results."""
+    output={}
+    for name,phase in legacy.get("phases",{}).items():
+        eligible=int(phase.get("eligible",0)); attempted=int(phase.get("attempted",0)); stopped=termination if termination and termination.get("phase")==name else None
+        counts={"eligible":eligible+excluded if name=="discovery" else eligible,"selected":eligible,"excluded":excluded if name=="discovery" else 0,"scheduled":attempted,"started":attempted,"completed":attempted,"observed":int(phase.get("observed",0)),"timeout":int(phase.get("timeout",0)),"error":int(phase.get("error",0)),"cancelled":0,"not_started":max(0,eligible-attempted)}
+        reasons={"excluded_by_policy":excluded if name=="discovery" else 0,"budget_exhausted":counts["not_started"] if stopped and stopped.get("reason_code")=="budget_exhausted" else 0,"endpoint_limit":0,"operator_interrupt":0,"dependency_not_observed":0,"capability_disabled":0 if phase.get("enabled") else eligible,"unsupported":0 if phase.get("support",{}).get("status")=="supported" else eligible}
+        output[name]={"capability_id":name,"status":"partial" if stopped or counts["not_started"] else "complete","termination":dict(stopped) if stopped else None,"counts":counts,"budget":dict(budget or {"limit":None,"reserved":attempted,"consumed":attempted,"remaining":None,"unit":"work_units"}),"omission_reasons":reasons,"complete_within_configured_scope":not stopped and counts["not_started"]==0,"evidence_refs":list(phase.get("evidence_refs",[])),"error_refs":list(phase.get("error_refs",[]))}
+    return {"model_version":"2.0","phases":output}
+
+def validate_coverage_v2(value: Mapping[str,Any]) -> None:
+    if list(value.get("phases",{}))!=list(PHASE_ORDER): raise ValueError("invalid coverage 2.0 phase order")
+    required={"eligible","selected","excluded","scheduled","started","completed","observed","timeout","error","cancelled","not_started"}
+    for name,phase in value["phases"].items():
+        counts=phase.get("counts",{}); missing=required-counts.keys()
+        if missing or any(isinstance(counts[k],bool) or not isinstance(counts[k],int) or counts[k]<0 for k in required): raise ValueError("invalid coverage 2.0 counts")
+        if phase.get("status") not in {"complete","partial","interrupted","failed"}: raise ValueError("invalid coverage 2.0 status")
+        if counts["selected"]+counts["excluded"]!=counts["eligible"] or counts["completed"]>counts["started"] or counts["started"]>counts["scheduled"] or counts["scheduled"]+counts["not_started"]!=counts["selected"]: raise ValueError("incoherent coverage 2.0 counts")
