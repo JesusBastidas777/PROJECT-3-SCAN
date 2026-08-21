@@ -67,3 +67,5 @@ def validate_feed(value: Mapping[str, Any]) -> None:
     if required-value.keys() or value.get("feed_schema_version")!="1.0" or value.get("document_type")!="scan_sensor_feed": raise ValueError("invalid feed contract")
     refs=[item.get("observation_id") for item in value["endpoint_observations"]]
     if value["evidence_refs"]!=refs or len(refs)!=len(set(refs)) or any(str(value["report_ref"]).startswith(prefix) for prefix in ("/","\\")): raise ValueError("invalid feed references")
+    if not isinstance(value.get("omitted_counts"), Mapping) or any(not isinstance(value["omitted_counts"].get(key), int) or value["omitted_counts"][key] < 0 for key in ("assets","endpoints")): raise ValueError("invalid feed omitted counts")
+    if not value.get("truncated") and any(value["omitted_counts"].values()): raise ValueError("feed omission must be explicit")

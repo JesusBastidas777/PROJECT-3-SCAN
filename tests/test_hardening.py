@@ -11,6 +11,8 @@ from scanner.event_io import event_document, prepare_events, validate_batch
 from scanner.events import events_from_report, validate_events_for_report
 from scanner.observations import tcp_observation
 from scanner.snapshots import build_snapshot, validate_snapshot
+from scanner.feed import validate_feed
+from scanner.comparability import validate_comparison_v2
 
 def report(state="open", stamp="2026-01-01T00:00:00.000Z"):
     endpoint = tcp_observation(443, state, "connected" if state == "open" else "connection_refused")
@@ -41,6 +43,7 @@ class HardeningTests(unittest.TestCase):
         validate_snapshot(json.loads((fixtures / "snapshot-1.0.json").read_text()))
         validate_comparison(json.loads((fixtures / "comparison-1.0.json").read_text()))
         validate_batch(json.loads((fixtures / "batch-1.0.json").read_text()))
+        validate_feed(json.loads((fixtures / "feed-1.0.json").read_text()))
     def test_no_prohibited_conclusions(self):
         text = json.dumps({"report":report(),"comparison":build_comparison(build_snapshot(report()),build_snapshot(report()))}).lower()
         for phrase in ("vulnerable","compromised","firewall detected","cve applies","os confirmed","certificate proves identity","host offline"):

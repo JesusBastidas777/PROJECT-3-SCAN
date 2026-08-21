@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:project-scan:report:2.1",
   "type": "object",
-  "required": ["schema_version", "document_type", "scan_id", "scanner", "started_at", "completed_at", "duration_ms", "target", "configuration", "effective_configuration", "capabilities", "capability_execution", "coverage", "summary", "assets", "observations", "errors"],
+  "required": ["schema_version", "document_type", "scan_id", "scanner", "started_at", "completed_at", "duration_ms", "target", "configuration", "effective_configuration", "configuration_fingerprint", "capabilities", "capability_execution", "coverage", "summary", "assets", "observations", "errors", "discovery_observations", "name_observations", "neighbor_observations", "evidence_clusters", "correlation_execution"],
   "properties": {
     "schema_version": {"const": "2.1"},
     "document_type": {"const": "scan_report"},
@@ -11,12 +11,16 @@
     "target": {"type": "object", "required": ["input", "network", "target_id", "ip_version"]},
     "configuration": {"type": "object"},
     "effective_configuration": {"type": "object"},
+    "configuration_fingerprint": {"type":"string","pattern":"^[a-f0-9]{64}$"},
     "capabilities": {"type": "object"},
     "capability_execution": {"type": "object"},
     "coverage": {"type": "object", "required": ["model_version", "phases"]},
     "summary": {"type": "object", "required": ["assets_observed", "observations", "states", "errors"]},
     "assets": {"type": "array"},
     "observations": {"type": "array"},
-    "errors": {"type": "array"}
+    "errors": {"type": "array"},
+    "discovery_observations":{"type":"array"},"name_observations":{"type":"array"},"neighbor_observations":{"type":"array"},
+    "evidence_clusters":{"type":"array","items":{"type":"object","required":["relation_id","relation_type","members","evidence_refs","confidence","basis","limitations","scope","ruleset_version","contradictions","physical_device_asserted"],"properties":{"physical_device_asserted":{"const":false},"confidence":{"enum":["low","medium","indeterminate"]}}}},
+    "correlation_execution":{"type":"object"}
   }
 }

@@ -129,6 +129,7 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
     )
     phase = report["coverage"]["phases"]["enrichment"]
     report["capability_execution"]["enrichment"] = {"support": phase["support"], "backend": phase["backend"], "enabled": phase["enabled"], "complete_within_configured_scope": phase["complete_within_configured_scope"]}
+    report["capabilities"] = {name: dict(value) for name, value in report["capability_execution"].items()}
     return report
 
 
@@ -163,3 +164,17 @@ def validate_report_shape(report: Mapping[str, Any]) -> None:
         from scanner.coverage import validate_coverage
         if not isinstance(report.get("capability_execution"), Mapping): raise ValueError("missing capability execution")
         validate_coverage(report.get("coverage", {}))
+        if report.get("effective_configuration") != report.get("configuration"): raise ValueError("effective configuration mismatch")
+        if report.get("configuration_fingerprint") != semantic_hash(report["effective_configuration"]): raise ValueError("configuration fingerprint mismatch")
+        if report.get("capabilities") != report.get("capability_execution"): raise ValueError("capability execution mismatch")
+        discovery_ids = [item.get("discovery_observation_id") for item in report.get("discovery_observations", [])]
+        neighbor_ids = [item.get("neighbor_observation_id") for item in report.get("neighbor_observations", [])]
+        relation_ids = [item.get("relation_id") for item in report.get("evidence_clusters", [])]
+        for identifiers in (discovery_ids, neighbor_ids, relation_ids):
+            if any(not isinstance(item, str) for item in identifiers) or len(identifiers) != len(set(identifiers)): raise ValueError("evidence IDs must be unique strings")
+        known_evidence = set(observation_ids + discovery_ids + neighbor_ids)
+        known_assets = {str(item) for item in asset_ids}
+        for phase in report["coverage"]["phases"].values():
+            if not set(phase.get("evidence_refs", [])) <= known_evidence: raise ValueError("coverage references unknown evidence")
+        for relation in report.get("evidence_clusters", []):
+            if relation.get("physical_device_asserted") is not False or not set(relation.get("members", [])) <= known_assets or not set(relation.get("evidence_refs", [])) <= known_evidence: raise ValueError("invalid candidate relation references")

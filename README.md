@@ -139,6 +139,16 @@ hash-only certificate representation; it makes no identity or security claim.
 are untrusted aliases, and its timeout is explicitly best-effort rather than a
 portable hard deadline.
 
+Report 2.1 adds per-phase coverage and structured runtime capability execution.
+Optional neighbor collection reads existing local caches without active ARP/NDP
+scanning. Optional HTTP collection sends a bounded HEAD request, never follows
+redirects, crawls, authenticates or retains cookies. Candidate evidence clusters
+keep asset IDs separate and never assert a physical device.
+
+The local `query`, `history list/show` and `feed` commands perform no probes.
+Comparison 2.0 uses strict baseline comparability by default; feed 1.0 is a
+compact projection with an opaque reference to the full report.
+
 `--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
 index. History is never deleted automatically and may retain sensitive banners;
 operators must apply suitable permissions and retention policy.

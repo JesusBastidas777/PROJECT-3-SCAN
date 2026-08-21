@@ -35,3 +35,12 @@ before local output; delivery is deduplication-friendly, not exactly-once.
 
 FOREX retains responsibility for correlation, risk and decisions. It must not
 infer host-down from absent ICMP, a CVE from banner text, or risk from an open port.
+
+Report 2.1 exposes support, enabled/eligible/attempted/observed counts, timeouts,
+errors, truncation and configured-scope completeness per phase. These are
+measurement-quality facts, never confidence or risk scores. Neighbor, HTTP and
+candidate-relation evidence remain untrusted and do not establish identity.
+
+Feed 1.0 provides compact coverage, asset and endpoint summaries with opaque
+evidence/report references. FOREX may ingest it first and resolve the full report
+when necessary. Hash-only output remains correlatable and is not anonymization.

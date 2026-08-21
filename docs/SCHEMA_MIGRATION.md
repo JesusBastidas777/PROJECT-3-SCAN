@@ -13,3 +13,14 @@ Schema 1.0 remains the default and preserves historical `hosts[].ports[]`
 Never translate legacy `CLOSED` back into a precise 2.0 state: it historically
 included refusal, timeout, unreachable and local failures. Report and event
 contract versions evolve independently.
+
+## Fourth-stage contracts
+
+- Report 2.1 adds effective configuration, coverage, structured capability
+  execution, passive neighbor evidence, bounded HTTP evidence and candidate
+  relations. Report 1.0 remains frozen and report 2.0 remains readable.
+- Snapshot 1.1 wraps report 2.1 with measurement/presentation fingerprints;
+  snapshot 1.0 remains the report-2.0 format.
+- Comparison 2.0 adds strict/common-scope policies and explicit comparability.
+- Feed 1.0 is an independent compact projection. Event and batch 1.0 remain
+  independently versioned and accept report 2.0 or 2.1 producers.

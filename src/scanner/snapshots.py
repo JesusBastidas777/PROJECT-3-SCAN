@@ -45,6 +45,8 @@ def validate_snapshot(snapshot: Mapping[str, Any]) -> None:
     if report_version not in {"2.0", "2.1"} or snapshot["target_id"] != snapshot["report"]["target"]["target_id"]: raise ValueError("invalid snapshot contract")
     if report_version == "2.1":
         if snapshot.get("snapshot_schema_version") != "1.1" or not isinstance(snapshot.get("measurement_scope_fingerprint"), str): raise ValueError("invalid snapshot 1.1 contract")
+        identity = baseline_identity(snapshot["report"])
+        if snapshot.get("configuration_fingerprint") != semantic_hash(snapshot["report"]["configuration"]) or snapshot.get("measurement_scope_fingerprint") != identity["measurement_scope_fingerprint"] or snapshot.get("presentation_fingerprint") != identity["presentation_fingerprint"] or snapshot.get("content_fingerprint") != semantic_hash(canonical_content(snapshot["report"])): raise ValueError("snapshot 1.1 fingerprint mismatch")
     elif "snapshot_schema_version" in snapshot and snapshot.get("snapshot_schema_version") != "1.0":
         raise ValueError("invalid snapshot 1.0 contract")
 
