@@ -9,6 +9,7 @@ from scanner.job_state import JobState, TERMINAL_JOB_STATES
 from scanner.readiness import publish_readiness
 from scanner.runtime_health import RuntimeHealth
 from scanner.runtime_paths import SCANRuntimeConfig, prepare_runtime
+from scanner.locking import FileLock
 
 
 class SCANRuntime:
@@ -20,6 +21,7 @@ class SCANRuntime:
         self.active_job: JobState | None = None
         self.last_successful_scan_id: str | None = None
         self._guard = threading.Lock()
+        self._job_file_lock = None
 
     def start(self) -> None:
         prepare_runtime(self.config)
@@ -34,6 +36,10 @@ class SCANRuntime:
         with self._guard:
             if self.active_job is not None and self.active_job.state not in TERMINAL_JOB_STATES:
                 raise ScanAlreadyRunning("a SCAN job is already active", {"scan_id": self.active_job.scan_id})
+            lock = FileLock(self.config.locks_dir / "active-scan.lock", timeout=.1, stale_after=86400)
+            try: lock.__enter__()
+            except TimeoutError as exc: raise ScanAlreadyRunning("another SCAN runtime owns the active job lock") from exc
+            self._job_file_lock = lock
             self.active_job = JobState(scan_id=scan_id, target=target)
             self.health.publish(lifecycle=self.lifecycle, job=self.active_job, last_successful_scan_id=self.last_successful_scan_id)
             return self.active_job
@@ -45,6 +51,8 @@ class SCANRuntime:
         if state == "completed":
             self.last_successful_scan_id = self.active_job.scan_id
         self.health.publish(lifecycle=self.lifecycle, job=self.active_job, last_successful_scan_id=self.last_successful_scan_id)
+        if state in TERMINAL_JOB_STATES and self._job_file_lock is not None:
+            self._job_file_lock.__exit__(None, None, None); self._job_file_lock = None
         return self.active_job
 
     def stop(self) -> None:

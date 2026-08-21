@@ -11,6 +11,9 @@ from scanner.feed import validate_feed
 from scanner.plan_contract import validate_plan
 from scanner.snapshots import validate_snapshot
 from scanner.checkpoints import validate_checkpoint
+from scanner.operational_view import validate_operational_view
+from scanner.readiness import validate_readiness
+from scanner.runtime_health import validate_heartbeat, validate_runtime_status
 @dataclass(frozen=True)
 class ContractSpec:
     type_name: str; version: str; validator: Callable[[Mapping],None]
@@ -26,6 +29,10 @@ def _validate_outbox(value: Mapping) -> None:
     if value.get("outbox_schema_version")!="1.0" or value.get("document_type")!="forex_outbox_item" or semantic_hash(value.get("payload"))!=value.get("content_hash"): raise ValueError("invalid outbox item")
 REGISTRY[("migration_receipt","1.0")]=ContractSpec("migration_receipt","1.0",_validate_receipt)
 REGISTRY[("outbox","1.0")]=ContractSpec("outbox","1.0",_validate_outbox)
+REGISTRY[("operational_view","1.0")]=ContractSpec("operational_view","1.0",validate_operational_view)
+REGISTRY[("readiness","1.0")]=ContractSpec("readiness","1.0",validate_readiness)
+REGISTRY[("heartbeat","1.0")]=ContractSpec("heartbeat","1.0",validate_heartbeat)
+REGISTRY[("runtime_status","1.0")]=ContractSpec("runtime_status","1.0",validate_runtime_status)
 def detect_contract(value: Mapping) -> tuple[str,str]:
     if "plan_schema_version" in value: return "plan",str(value["plan_schema_version"])
     if "schema_version" in value and (value.get("document_type")=="scan_report" or "scanner" in value): return "report",str(value["schema_version"])
@@ -37,6 +44,10 @@ def detect_contract(value: Mapping) -> tuple[str,str]:
     if "checkpoint_schema_version" in value: return "checkpoint",str(value["checkpoint_schema_version"])
     if "migration_receipt_version" in value: return "migration_receipt",str(value["migration_receipt_version"])
     if "outbox_schema_version" in value: return "outbox",str(value["outbox_schema_version"])
+    if "operational_view_schema_version" in value: return "operational_view",str(value["operational_view_schema_version"])
+    if "readiness_schema_version" in value: return "readiness",str(value["readiness_schema_version"])
+    if "heartbeat_schema_version" in value: return "heartbeat",str(value["heartbeat_schema_version"])
+    if "status_schema_version" in value: return "runtime_status",str(value["status_schema_version"])
     raise ValueError("unknown_document_type")
 def get_contract(type_name: str,version: str) -> ContractSpec:
     try: return REGISTRY[(type_name,version)]

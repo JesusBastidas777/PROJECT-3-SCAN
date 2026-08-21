@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import threading
+from dataclasses import replace
 from typing import Any, Mapping
 
 from scanner.changes import compare_snapshots
@@ -18,6 +19,8 @@ from scanner.scan_pipeline import execute_scan
 from scanner.runtime import SCANRuntime
 from scanner.scan_parser import create_parser
 from scanner.publisher import publish_result
+from scanner.runtime_health import validate_heartbeat, validate_runtime_status
+from scanner.operational_view import validate_operational_view
 
 
 class SCANService:
@@ -49,12 +52,14 @@ class SCANService:
     def health(self) -> SCANResponseV1:
         if self.config.runtime is not None and self.config.runtime.heartbeat_path.exists():
             value = load_json_document(self.config.runtime.heartbeat_path)
+            validate_heartbeat(value)
             return SCANResponseV1(data={"health": value})
         return self.check()
 
     def status(self) -> SCANResponseV1:
         if self.config.runtime is not None and self.config.runtime.status_path.exists():
             value = load_json_document(self.config.runtime.status_path)
+            validate_runtime_status(value)
             return SCANResponseV1(data={"status": value})
         scans = self._scan_paths()
         return SCANResponseV1(data={"state": "idle", "scan_count": len(scans)})
@@ -94,6 +99,8 @@ class SCANService:
         plan = build_scan_plan(resolved)
         self._resolved = resolved
         self._cancel_event.clear()
+        values = dict(resolved.values); values["_cancel_event"] = self._cancel_event
+        resolved = replace(resolved, values=tuple(sorted(values.items())))
         job = self.runtime.begin_job(plan["plan_id"].replace("plan_", "scan_pending_"), request.target)
         self.runtime.transition_job("running")
         try:
@@ -102,7 +109,7 @@ class SCANService:
             if self._cancel_event.is_set():
                 report["partial"] = True
                 report["baseline_eligible"] = False
-                report["termination"] = {
+                report["termination"] = report.get("termination") or {
                     "reason_code": "operator_interrupt", "phase": "runtime",
                     "budget_id": None, "occurred_at": report.get("completed_at", utc_timestamp()),
                 }
@@ -182,7 +189,8 @@ class SCANService:
 
     def get_latest_scan(self) -> SCANResponseV1:
         if self.config.runtime is not None and self.config.runtime.latest_scan_path.exists():
-            return SCANResponseV1(data={"scan": load_json_document(self.config.runtime.latest_scan_path)})
+            value = load_json_document(self.config.runtime.latest_scan_path); validate_operational_view(value)
+            return SCANResponseV1(data={"scan": value})
         reports = [self._load_scan(path) for path in self._scan_paths()]
         if not reports:
             raise ScanNotFound("no scans are available")
@@ -254,5 +262,9 @@ class SCANService:
         if self.runtime is None:
             raise RequestInvalid("publication retry requires a runtime")
         report = self.get_scan(scan_id).data["scan"]
+        from scanner.job_state import JobState
+        if self.runtime.active_job is None:
+            partial = bool(report.get("partial"))
+            self.runtime.active_job = JobState(scan_id, report.get("target", {}).get("network", "unknown"), state="partial" if partial else "completed", partial=partial)
         publication = publish_result(report, self.runtime)
         return SCANResponseV1(data={"scan_id": scan_id, "operational_view": publication["view"]})
