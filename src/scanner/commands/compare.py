@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 from scanner.changes import build_comparison
+from scanner.comparability import build_comparison_v2
 from scanner.report import serialize_report, write_report_atomic
 from scanner.snapshots import validate_snapshot
 
@@ -26,9 +27,11 @@ def compare_main(argv: Sequence[str]) -> int:
     parser.add_argument("baseline", type=Path)
     parser.add_argument("current", type=Path)
     parser.add_argument("--output", default="-", metavar="PATH|-")
+    parser.add_argument("--policy", choices=("strict", "common-scope"), default="strict")
+    parser.add_argument("--explain-comparability", action="store_true")
     try:
         args = parser.parse_args(argv)
-        result = build_comparison(read_snapshot(args.baseline), read_snapshot(args.current))
+        result = build_comparison_v2(read_snapshot(args.baseline), read_snapshot(args.current), policy=args.policy, explain=args.explain_comparability)
         if args.output == "-": sys.stdout.write(serialize_report(result))
         else: write_report_atomic(result, Path(args.output))
         return 0

@@ -28,3 +28,9 @@ their signal class, evidence references, limitations, ruleset and
 contradictions. PTR or service hints alone never create a multi-address
 relation. Every relation carries `physical_device_asserted=false`; FOREX remains
 responsible for global correlation and interpretation.
+
+Comparison 2.0 defaults to strict measurement-scope equivalence. A configuration
+change produces an incomparable result rather than a network change.
+`--policy common-scope` can expose a measured intersection and always labels it
+partially comparable. Presentation settings have an independent fingerprint;
+privacy, probe, port, timeout and limit changes remain measurement semantics.

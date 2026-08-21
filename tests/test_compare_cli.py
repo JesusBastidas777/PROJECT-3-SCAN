@@ -22,7 +22,7 @@ class CompareCliTests(unittest.TestCase):
             baseline.write_text(json.dumps(snapshot("open"))); current.write_text(json.dumps(snapshot("closed")))
             with patch("sys.stdout", new_callable=io.StringIO) as stdout, patch("main.collect_report") as scan:
                 self.assertEqual(main.main(["compare", str(baseline), str(current), "--output", "-"]), 0)
-            value = json.loads(stdout.getvalue()); self.assertEqual(value["comparison_schema_version"], "1.0"); scan.assert_not_called()
+            value = json.loads(stdout.getvalue()); self.assertEqual(value["comparison_schema_version"], "2.0"); self.assertEqual(value["policy"], "strict"); scan.assert_not_called()
     def test_corrupt_and_different_target_fail(self):
         with tempfile.TemporaryDirectory() as directory, patch("sys.stderr", new_callable=io.StringIO):
             a = Path(directory) / "a"; b = Path(directory) / "b"; a.write_text("bad"); b.write_text(json.dumps(snapshot("open")))

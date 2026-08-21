@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:project-scan:snapshot-comparison:2.0",
+  "type":"object",
+  "required":["comparison_schema_version","document_type","baseline_snapshot_id","current_snapshot_id","policy","comparability","baseline_identity","current_identity","comparison_scope","changes_summary","changes","indeterminate"],
+  "properties":{
+    "comparison_schema_version":{"const":"2.0"},
+    "document_type":{"const":"snapshot_comparison"},
+    "policy":{"enum":["strict","common-scope"]},
+    "comparability":{"enum":["comparable","partially_comparable","incomparable"]},
+    "baseline_identity":{"type":"object"},"current_identity":{"type":"object"},
+    "phase_comparability":{"type":"object"},"comparison_scope":{"type":"object"},
+    "changes_summary":{"type":"object"},"changes":{"type":"array"},"indeterminate":{"type":"array"}
+  }
+}
