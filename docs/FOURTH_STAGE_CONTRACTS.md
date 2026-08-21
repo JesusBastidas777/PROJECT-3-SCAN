@@ -15,3 +15,10 @@ Link-layer addresses are sensitive. `--neighbor-privacy hash-only` is the
 default; hashes remain correlatable and are not anonymization. Cache entries,
 states and link-layer addresses do not prove current reachability, ownership or
 physical-device identity.
+
+HTTP evidence is opt-in and bounded. It sends `HEAD /` with an IP-literal Host,
+does not follow redirects, retain cookies, authenticate or crawl. Explicit
+`head-get` mode uses a range-limited GET only after 405/501 and still enforces a
+local body-prefix limit. Only allowlisted metadata and an optional prefix hash
+are retained. Server, Location and response hashes are untrusted evidence and
+do not confirm product, ownership, identity or vulnerability.

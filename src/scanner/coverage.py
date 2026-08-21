@@ -158,7 +158,7 @@ def build_coverage(
         "tls": tls,
         "dns": dns,
         "neighbors": neighbors,
-        "http": phase_descriptor("http", supported=False, backend="not_implemented", enabled=False, reason="not_implemented_until_day_50"),
+        "http": _nested_phase("http", "http", observations, enabled=bool(configuration.get("http", {}).get("enabled")), backend="python_socket_http", limits=configuration.get("http", {})),
         "enrichment": phase_descriptor("enrichment", supported=True, backend="deterministic_rules", enabled=True, eligible=len(observations), attempted=len(observations), observed=len(observations), effective_limits={"workers": 0}),
     }
     return {"model_version": "1.0", "phases": {name: phases[name] for name in PHASE_ORDER}}

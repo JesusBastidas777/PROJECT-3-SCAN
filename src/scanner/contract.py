@@ -81,8 +81,10 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
     neighbor_observations = list(arguments.pop("neighbor_observations", ()))
     neighbor_execution = dict(arguments.pop("neighbor_execution", {}))
     neighbor_configuration = dict(arguments.pop("neighbor_configuration", {}))
+    http_configuration = dict(arguments.pop("http_configuration", {}))
     report = build_report_v2(**arguments)
     report["configuration"]["neighbors"] = neighbor_configuration
+    report["configuration"]["http"] = http_configuration
     report["effective_configuration"] = dict(report["configuration"])
     report["schema_version"] = "2.1"
     report["scanner"] = {"name": "SCAN", "version": "2.1.0"}

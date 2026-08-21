@@ -34,6 +34,7 @@ from scanner.profiles import apply_profile, PROFILES
 from scanner.event_io import write_events
 from scanner.events import MAX_EVENT_BYTES
 from scanner.neighbors import collect_neighbor_evidence
+from scanner.http_probe import collect_open_http, DEFAULT_HTTP_PORTS, MAX_HTTP_WORKERS
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -216,6 +217,16 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--neighbor-max-records", type=positive_integer, default=256)
     parser.add_argument("--neighbor-timeout", type=positive_float, default=1.0)
     parser.add_argument("--neighbor-interface")
+    parser.add_argument("--collect-http", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--http-ports", type=parse_ports, default=list(DEFAULT_HTTP_PORTS))
+    parser.add_argument("--http-workers", type=positive_integer, default=4)
+    parser.add_argument("--http-max-endpoints", type=positive_integer, default=32)
+    parser.add_argument("--http-connect-timeout", type=positive_float, default=.5)
+    parser.add_argument("--http-tls-timeout", type=positive_float, default=1.0)
+    parser.add_argument("--http-read-timeout", type=positive_float, default=1.0)
+    parser.add_argument("--http-max-header-bytes", type=positive_integer, default=16384)
+    parser.add_argument("--http-body-hash-bytes", type=positive_integer, default=4096)
+    parser.add_argument("--http-method", choices=("head", "head-get"), default="head")
     return parser
 
 
@@ -246,6 +257,12 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
         host_results[host] = [reusable.get((host, int(item["port"])), item) for item in observations]
     if getattr(args, "collect_tls", False):
         host_results = collect_open_tls(host_results, ports=args.tls_ports, workers=args.tls_workers, max_endpoints=args.tls_max_endpoints, connect_timeout=args.tls_connect_timeout, handshake_timeout=args.tls_handshake_timeout)
+    if getattr(args, "collect_http", False):
+        if args.schema_version != "2.1":
+            raise ValueError("--collect-http requires --schema-version 2.1")
+        if args.http_workers > MAX_HTTP_WORKERS:
+            raise ValueError(f"HTTP workers must not exceed {MAX_HTTP_WORKERS}")
+        host_results = collect_open_http(host_results, ports=args.http_ports, workers=args.http_workers, max_endpoints=args.http_max_endpoints, method_mode=args.http_method, connect_timeout=args.http_connect_timeout, tls_timeout=args.http_tls_timeout, read_timeout=args.http_read_timeout, max_header_bytes=args.http_max_header_bytes, body_hash_bytes=args.http_body_hash_bytes)
     name_observations = collect_name_observations(active_hosts, workers=args.dns_workers, timeout=args.dns_timeout, max_assets=args.dns_max_assets) if getattr(args, "resolve_names", False) else []
     if args.collect_banners:
         host_results = collect_open_banners(
@@ -279,6 +296,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             dns_configuration={"enabled": getattr(args, "resolve_names", False), "workers": getattr(args, "dns_workers", 4), "timeout_seconds": getattr(args, "dns_timeout", 1.0), "timeout_guarantee": "best_effort", "max_assets": getattr(args, "dns_max_assets", 256)},
             profile_configuration={"name": getattr(args, "profile", None), "version": getattr(args, "profile_version", None), "overrides": getattr(args, "profile_overrides", [])},
             **({"neighbor_observations": neighbor_observations, "neighbor_execution": neighbor_execution, "neighbor_configuration": {"enabled": getattr(args, "collect_neighbors", False), "privacy": getattr(args, "neighbor_privacy", "hash-only"), "max_records": getattr(args, "neighbor_max_records", 256), "timeout_seconds": getattr(args, "neighbor_timeout", 1.0), "interface": getattr(args, "neighbor_interface", None)}} if args.schema_version == "2.1" else {}),
+            **({"http_configuration": {"enabled": getattr(args, "collect_http", False), "ports": getattr(args, "http_ports", list(DEFAULT_HTTP_PORTS)), "workers": getattr(args, "http_workers", 4), "max_endpoints": getattr(args, "http_max_endpoints", 32), "connect_timeout_seconds": getattr(args, "http_connect_timeout", .5), "tls_timeout_seconds": getattr(args, "http_tls_timeout", 1.0), "read_timeout_seconds": getattr(args, "http_read_timeout", 1.0), "max_header_bytes": getattr(args, "http_max_header_bytes", 16384), "body_hash_bytes": getattr(args, "http_body_hash_bytes", 4096), "method": getattr(args, "http_method", "head")}} if args.schema_version == "2.1" else {}),
         )
     return build_report(
         target_input=args.target,
