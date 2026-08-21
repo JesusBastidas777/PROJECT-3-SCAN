@@ -26,3 +26,12 @@ class FOREXSCANWorkflow:
 
     def plan(self, request) -> SCANResponseV1:
         return self.service.plan_scan(request)
+
+    def start(self, request) -> SCANResponseV1:
+        return self.service.start_scan(request)
+
+    def cancel(self, scan_id: str) -> SCANResponseV1:
+        return self.service.cancel_scan(scan_id)
+
+    def resume(self, checkpoint_id: str) -> SCANResponseV1:
+        return self.service.resume_scan(checkpoint_id)
