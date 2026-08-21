@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from scanner import SCANConfig, SCANService
@@ -21,9 +22,10 @@ class ServiceCancelTests(unittest.TestCase):
             config = SCANRuntimeConfig(Path(directory) / "runtime")
             runtime = SCANRuntime(config); runtime.start()
             service = SCANService(SCANConfig(config.reports_dir, runtime=config), executor=executor, runtime=runtime)
-            thread = threading.Thread(target=lambda: result.setdefault("response", service.start_scan(request())))
-            thread.start(); self.assertTrue(entered.wait(1))
-            service.cancel_scan("active"); release.set(); thread.join(2)
+            with patch("scanner.service.publish_result", return_value={"view": {"scan_id": "scan-cancel"}}):
+                thread = threading.Thread(target=lambda: result.setdefault("response", service.start_scan(request())))
+                thread.start(); self.assertTrue(entered.wait(1))
+                service.cancel_scan("active"); release.set(); thread.join(2)
             report = result["response"].data["scan"]
         self.assertTrue(report["partial"])
         self.assertFalse(report["baseline_eligible"])

@@ -2,12 +2,14 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from scanner import SCANConfig, SCANService
 from scanner.configuration import ScanRequest
 from scanner.runtime import SCANRuntime
 from scanner.runtime_paths import SCANRuntimeConfig
+from test_publisher import report22
 
 
 OPTIONS = (
@@ -27,15 +29,15 @@ class ServiceExecutionTests(unittest.TestCase):
         observed = {}
         def executor(configuration):
             observed["workers"] = configuration.execution.workers
-            return {"schema_version": "2.2", "scan_id": "scan-test", "target": {"target_id": "target-x"}, "completed_at": "2026-01-01T00:00:00Z", "partial": False, "baseline_eligible": True}
+            return report22()
         with tempfile.TemporaryDirectory() as directory:
             runtime_config = SCANRuntimeConfig(Path(directory) / "runtime")
             runtime = SCANRuntime(runtime_config); runtime.start()
             service = SCANService(SCANConfig(runtime_config.reports_dir, runtime=runtime_config), executor=executor, runtime=runtime)
             response = service.start_scan(request(workers=3))
-            self.assertTrue((runtime_config.reports_dir / "scan-test.json").exists())
+            self.assertTrue((runtime_config.reports_dir / f"{response.data['scan']['scan_id']}.json").exists())
         self.assertEqual(observed["workers"], 3)
-        self.assertEqual(response.data["scan"]["scan_id"], "scan-test")
+        self.assertEqual(response.data["operational_view"]["scan_id"], response.data["scan"]["scan_id"])
 
     def test_forex_requires_report_22(self):
         with tempfile.TemporaryDirectory() as directory:

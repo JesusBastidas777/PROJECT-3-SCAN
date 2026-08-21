@@ -17,6 +17,7 @@ from scanner.report import write_report_atomic, utc_timestamp
 from scanner.scan_pipeline import execute_scan
 from scanner.runtime import SCANRuntime
 from scanner.scan_parser import create_parser
+from scanner.publisher import publish_result
 
 
 class SCANService:
@@ -107,9 +108,9 @@ class SCANService:
                 self.runtime.transition_job("partial")
             else:
                 self.runtime.transition_job("completed")
+            publication = publish_result(report, self.runtime)
             destination = self.config.runtime.reports_dir / f"{report['scan_id']}.json"
-            write_report_atomic(report, destination)
-            return SCANResponseV1(data={"scan": report}, metadata={"report_path": str(destination)})
+            return SCANResponseV1(data={"scan": report, "operational_view": publication["view"]}, metadata={"report_path": str(destination)})
         except Exception as exc:
             if self.runtime.active_job and self.runtime.active_job.state == "cancelling":
                 self.runtime.transition_job("failed")
