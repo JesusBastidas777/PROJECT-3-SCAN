@@ -6,6 +6,19 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from scanner.concurrency import bounded_ordered_calls
+from scanner.configuration import ResolvedScanConfiguration
+def execute_scan(configuration: ResolvedScanConfiguration) -> dict[str, Any]:
+    """Lazily enter the acquisition coordinator to avoid phase import cycles."""
+    from scanner.scan_pipeline import execute_scan as run
+    return run(configuration)
+
+def build_scan_plan(configuration: ResolvedScanConfiguration) -> ResolvedScanConfiguration:
+    """Return the resolved acquisition intent; DAY#59 adds its public projection."""
+    return configuration
+
+def build_report(execution_result: dict[str, Any]) -> dict[str, Any]:
+    """Reports are currently the terminal immutable execution result."""
+    return execution_result
 
 
 def execute_bounded_phase(

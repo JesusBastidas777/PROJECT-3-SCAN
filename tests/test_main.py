@@ -54,12 +54,20 @@ class CliTests(unittest.TestCase):
         self.assertEqual(args.connect_timeout, 0.3)
         self.assertEqual(args.max_hosts, 8)
 
+    def test_explicit_scan_subcommand_matches_legacy_dispatch(self):
+        with patch("main.collect_report",return_value=REPORT) as collect, patch("sys.stdout",new_callable=io.StringIO):
+            self.assertEqual(scan_main.main(["scan","127.0.0.1/32","--output","-"]),0)
+        self.assertEqual(collect.call_args.args[0].target,"127.0.0.1/32")
+
+    def test_compatibility_facades_remain_importable(self):
+        self.assertTrue(callable(scan_main.create_parser)); self.assertTrue(callable(scan_main.collect_report)); self.assertEqual(scan_main.EXIT_INTERRUPTED,130)
+
     def test_invalid_target_returns_usage_code(self):
         with patch("main.collect_report", side_effect=TargetValidationError("invalid")), patch("sys.stderr", new_callable=io.StringIO):
             self.assertEqual(scan_main.main(["invalid"]), scan_main.EXIT_USAGE)
 
     def test_oversized_target_is_rejected_before_discovery(self):
-        with patch("main.discover_hosts") as discover, patch(
+        with patch("scanner.scan_pipeline.discover_host_evidence") as discover, patch(
             "sys.stderr", new_callable=io.StringIO
         ):
             code = scan_main.main(["0.0.0.0/0", "--max-hosts", "4096"])
@@ -104,7 +112,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(json.loads(output.read_text(encoding="utf-8")), REPORT)
 
     @patch("main.collect_report", return_value=REPORT)
-    @patch("main.write_report_atomic", side_effect=OSError("read-only"))
+    @patch("scanner.outputs.write_report_atomic", side_effect=OSError("read-only"))
     def test_filesystem_failure_returns_operational_code(self, _write, _collect):
         with patch("sys.stderr", new_callable=io.StringIO):
             code = scan_main.main(["127.0.0.1/32", "--output", "scan.json"])
@@ -115,10 +123,10 @@ class CliTests(unittest.TestCase):
         with patch("sys.stderr", new_callable=io.StringIO):
             self.assertEqual(scan_main.main(["127.0.0.1/32"]), scan_main.EXIT_INTERRUPTED)
 
-    @patch("main.time.monotonic", side_effect=[10.0, 10.025])
-    @patch("main.utc_timestamp", return_value="2026-08-19T00:00:00.000Z")
-    @patch("main.scan_hosts", return_value={"127.0.0.1": []})
-    @patch("main.discover_host_evidence", return_value=[{"address": "127.0.0.1", "result": "response"}])
+    @patch("scanner.scan_pipeline.time.monotonic", side_effect=[10.0, 10.025])
+    @patch("scanner.scan_pipeline.utc_timestamp", return_value="2026-08-19T00:00:00.000Z")
+    @patch("scanner.scan_pipeline.scan_hosts", return_value={"127.0.0.1": []})
+    @patch("scanner.scan_pipeline.discover_host_evidence", return_value=[{"address": "127.0.0.1", "result": "response"}])
     def test_collection_builds_nonnegative_duration(self, _discover, _scan, _timestamp, _clock):
         args = argparse.Namespace(
             target="127.0.0.1/32", ports=[22], workers=2,

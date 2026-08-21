@@ -9,7 +9,7 @@ import main
 
 class CliEndToEndTests(unittest.TestCase):
     def test_v2_stdout_is_one_json_document(self):
-        with patch("main.discover_hosts", return_value=[]), patch("sys.stdout", new_callable=io.StringIO) as stdout, patch("sys.stderr", new_callable=io.StringIO) as stderr:
+        with patch("scanner.scan_pipeline.discover_host_evidence", return_value=[]), patch("sys.stdout", new_callable=io.StringIO) as stdout, patch("sys.stderr", new_callable=io.StringIO) as stderr:
             code = main.main(["127.0.0.1/32", "--schema-version", "2.0", "--output", "-"])
         self.assertEqual(code, 0); self.assertEqual(json.loads(stdout.getvalue())["schema_version"], "2.0"); self.assertEqual(stderr.getvalue(), "")
 
