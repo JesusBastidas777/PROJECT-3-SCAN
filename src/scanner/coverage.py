@@ -108,6 +108,8 @@ def build_coverage(
     discovery_observations: Sequence[Mapping[str, Any]],
     name_observations: Sequence[Mapping[str, Any]],
     configuration: Mapping[str, Any],
+    neighbor_observations: Sequence[Mapping[str, Any]] = (),
+    neighbor_execution: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive ordered execution coverage solely from recorded evidence/config."""
 
@@ -141,13 +143,21 @@ def build_coverage(
         error=sum(value == "error" for value in dns_statuses), truncated=any(value == "skipped" for value in dns_statuses),
         effective_limits=dns_config,
     )
+    neighbor_execution = neighbor_execution or {"supported": False, "backend": "not_implemented", "reason": "not_enabled", "eligible": 0, "attempted": 0, "truncated": False, "limits": {}}
+    neighbors = phase_descriptor(
+        "neighbors", supported=bool(neighbor_execution.get("supported")), backend=str(neighbor_execution.get("backend", "unknown")),
+        enabled=bool(configuration.get("neighbors", {}).get("enabled")), eligible=int(neighbor_execution.get("eligible", 0)), attempted=int(neighbor_execution.get("attempted", 0)),
+        observed=len(neighbor_observations), skipped=int(neighbor_execution.get("skipped", 0)), timeout=int(neighbor_execution.get("timeout", 0)), error=int(neighbor_execution.get("error", 0)),
+        truncated=bool(neighbor_execution.get("truncated")), effective_limits=neighbor_execution.get("limits", {}), reason=neighbor_execution.get("reason"),
+        evidence_refs=[str(item["neighbor_observation_id"]) for item in neighbor_observations],
+    )
     phases = {
         "discovery": discovery,
         "endpoint_tcp": endpoint,
         "banners": banners,
         "tls": tls,
         "dns": dns,
-        "neighbors": phase_descriptor("neighbors", supported=False, backend="not_implemented", enabled=False, reason="not_implemented_until_day_49"),
+        "neighbors": neighbors,
         "http": phase_descriptor("http", supported=False, backend="not_implemented", enabled=False, reason="not_implemented_until_day_50"),
         "enrichment": phase_descriptor("enrichment", supported=True, backend="deterministic_rules", enabled=True, eligible=len(observations), attempted=len(observations), observed=len(observations), effective_limits={"workers": 0}),
     }

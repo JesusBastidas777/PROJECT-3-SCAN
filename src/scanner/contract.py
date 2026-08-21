@@ -78,7 +78,12 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
 
     from scanner.coverage import build_coverage
 
+    neighbor_observations = list(arguments.pop("neighbor_observations", ()))
+    neighbor_execution = dict(arguments.pop("neighbor_execution", {}))
+    neighbor_configuration = dict(arguments.pop("neighbor_configuration", {}))
     report = build_report_v2(**arguments)
+    report["configuration"]["neighbors"] = neighbor_configuration
+    report["effective_configuration"] = dict(report["configuration"])
     report["schema_version"] = "2.1"
     report["scanner"] = {"name": "SCAN", "version": "2.1.0"}
     report["coverage"] = build_coverage(
@@ -86,6 +91,8 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
         discovery_observations=report.get("discovery_observations", []),
         name_observations=report.get("name_observations", []),
         configuration=report["configuration"],
+        neighbor_observations=neighbor_observations,
+        neighbor_execution=neighbor_execution,
     )
     report["capability_execution"] = {
         name: {
@@ -94,6 +101,7 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
         }
         for name, phase in report["coverage"]["phases"].items()
     }
+    report["neighbor_observations"] = neighbor_observations
     return report
 
 

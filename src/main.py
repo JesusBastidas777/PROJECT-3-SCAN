@@ -33,6 +33,7 @@ from scanner.commands.compare import compare_main
 from scanner.profiles import apply_profile, PROFILES
 from scanner.event_io import write_events
 from scanner.events import MAX_EVENT_BYTES
+from scanner.neighbors import collect_neighbor_evidence
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -210,6 +211,11 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dns-timeout", type=positive_float, default=1.0, metavar="SECONDS")
     parser.add_argument("--dns-max-assets", type=positive_integer, default=256)
     parser.add_argument("--profile", choices=tuple(PROFILES))
+    parser.add_argument("--collect-neighbors", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--neighbor-privacy", choices=("hash-only", "full"), default="hash-only")
+    parser.add_argument("--neighbor-max-records", type=positive_integer, default=256)
+    parser.add_argument("--neighbor-timeout", type=positive_float, default=1.0)
+    parser.add_argument("--neighbor-interface")
     return parser
 
 
@@ -249,6 +255,12 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             read_timeout=args.banner_read_timeout,
             max_bytes=args.banner_max_bytes,
         )
+    neighbor_observations = []
+    neighbor_execution = {"supported": False, "backend": "not_enabled", "reason": "not_enabled", "eligible": 0, "attempted": 0, "truncated": False, "limits": {"workers": 0}}
+    if getattr(args, "collect_neighbors", False):
+        if args.schema_version != "2.1":
+            raise ValueError("--collect-neighbors requires --schema-version 2.1")
+        neighbor_observations, neighbor_execution = collect_neighbor_evidence(network, privacy=args.neighbor_privacy, max_records=args.neighbor_max_records, timeout=args.neighbor_timeout, interface=args.neighbor_interface)
     duration_ms = max(0, round((time.monotonic() - started) * 1000))
     if args.schema_version in {"2.0", "2.1"}:
         completed_at = utc_timestamp()
@@ -266,6 +278,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             name_observations=name_observations,
             dns_configuration={"enabled": getattr(args, "resolve_names", False), "workers": getattr(args, "dns_workers", 4), "timeout_seconds": getattr(args, "dns_timeout", 1.0), "timeout_guarantee": "best_effort", "max_assets": getattr(args, "dns_max_assets", 256)},
             profile_configuration={"name": getattr(args, "profile", None), "version": getattr(args, "profile_version", None), "overrides": getattr(args, "profile_overrides", [])},
+            **({"neighbor_observations": neighbor_observations, "neighbor_execution": neighbor_execution, "neighbor_configuration": {"enabled": getattr(args, "collect_neighbors", False), "privacy": getattr(args, "neighbor_privacy", "hash-only"), "max_records": getattr(args, "neighbor_max_records", 256), "timeout_seconds": getattr(args, "neighbor_timeout", 1.0), "interface": getattr(args, "neighbor_interface", None)}} if args.schema_version == "2.1" else {}),
         )
     return build_report(
         target_input=args.target,
