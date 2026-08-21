@@ -6,9 +6,11 @@ from scanner.commands.feed import feed_main
 from scanner.commands.history import history_read_main
 from scanner.commands.query import query_main
 from scanner.commands.scan import scan_main
+from scanner.commands.plan import plan_main
 
 def dispatch(argv: Sequence[str], *, scan_runner: Callable[[Sequence[str]],int]=scan_main, history_retain_runner: Callable[[Sequence[str]],int]|None=None) -> int:
     args=list(argv)
+    if args[:1]==["plan"]: return plan_main(args[1:])
     if args[:1]==["compare"]: return compare_main(args[1:])
     if args[:1]==["query"]: return query_main(args[1:])
     if args[:1]==["feed"]: return feed_main(args[1:])
