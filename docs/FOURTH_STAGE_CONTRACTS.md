@@ -39,3 +39,8 @@ Report 2.1 records the real discovery mode, a canonical effective configuration
 and its fingerprint. Snapshot 1.1 wraps report 2.1 and adds independent
 measurement/presentation fingerprints; snapshot 1.0 remains readable for report
 2.0. Loaders discriminate and validate versions before accessing nested fields.
+
+`SCAN query` and `SCAN history list/show` are bounded local readers. They perform
+no discovery, endpoint, DNS, TLS, HTTP or neighbor probes. JSON query output is
+versioned; NDJSON and text are deterministic projections. Inputs are size
+limited, UTF-8 strict, version validated and reject symlinks by default.
