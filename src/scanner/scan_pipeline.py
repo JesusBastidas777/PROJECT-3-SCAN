@@ -13,13 +13,22 @@ from scanner.neighbors import collect_neighbor_evidence
 from scanner.ports import scan_hosts
 from scanner.report import build_report, utc_timestamp
 from scanner.tls import collect_open_tls, DEFAULT_TLS_PORTS
+from scanner.target_policy import apply_target_policy
+from scanner.ping import ping_evidence
+from scanner.concurrency import bounded_ordered_calls
+from scanner.discovery_evidence import discovery_observation
 
 def execute_scan(configuration: ResolvedScanConfiguration) -> dict[str, Any]:
     """Acquire evidence from one fully resolved immutable configuration."""
-    a=configuration.namespace(); network=validate_network(a.target,max_hosts=a.max_hosts)
+    a=configuration.namespace(); network=validate_network(a.target,max_hosts=a.max_hosts); p=configuration.target_selection
+    selection=apply_target_policy(network,include_hosts=p.include_hosts,exclude_hosts=p.exclude_hosts,include_cidrs=p.include_cidrs,exclude_cidrs=p.exclude_cidrs)
     timestamp=utc_timestamp(); started=time.monotonic(); mode=a.discovery
-    discovery=[] if mode=="tcp" else discover_host_evidence(network,timeout=a.ping_timeout,max_workers=a.workers,max_hosts=a.max_hosts)
-    candidates=[str(address) for address in network.hosts()]
+    if mode=="tcp": discovery=[]
+    elif len(selection.selected)==sum(1 for _ in network.hosts()): discovery=discover_host_evidence(network,timeout=a.ping_timeout,max_workers=a.workers,max_hosts=a.max_hosts)
+    else:
+        values=bounded_ordered_calls(ping_evidence,[(host,a.ping_timeout) for host in selection.selected],max_workers=min(a.workers,max(1,len(selection.selected)))) if selection.selected else []
+        discovery=[discovery_observation(host,"probe_error",error_code="worker_error") if isinstance(value,Exception) else value for host,value in zip(selection.selected,values)]
+    candidates=list(selection.selected)
     if mode=="icmp-tcp": candidates=[item["address"] for item in discovery if item["result"]!="response"]
     tcp=[]
     if mode in {"icmp-tcp","tcp"}:
@@ -43,5 +52,9 @@ def execute_scan(configuration: ResolvedScanConfiguration) -> dict[str, Any]:
         builder=build_report_v21 if a.schema_version=="2.1" else build_report_v2
         extra={}
         if a.schema_version=="2.1": extra={"neighbor_observations":neighbor,"neighbor_execution":neighbor_exec,"neighbor_configuration":{"enabled":a.collect_neighbors,"privacy":a.neighbor_privacy,"max_records":a.neighbor_max_records,"timeout_seconds":a.neighbor_timeout,"interface":a.neighbor_interface},"http_configuration":{"enabled":a.collect_http,"ports":a.http_ports,"workers":a.http_workers,"max_endpoints":a.http_max_endpoints,"connect_timeout_seconds":a.http_connect_timeout,"tls_timeout_seconds":a.http_tls_timeout,"read_timeout_seconds":a.http_read_timeout,"max_header_bytes":a.http_max_header_bytes,"body_hash_bytes":a.http_body_hash_bytes,"method":a.http_method},"correlation_configuration":{"enabled":a.correlate_evidence,"max_signals":a.correlation_max_signals,"max_relations":a.correlation_max_relations,"ruleset_version":"1.0"}}
-        return builder(target_input=a.target,network=network,host_results=hosts,ports=a.ports,started_at=timestamp,completed_at=utc_timestamp(),duration_ms=duration,ping_timeout=a.ping_timeout,connect_timeout=a.connect_timeout,workers=a.workers,max_hosts=a.max_hosts,banners_enabled=a.collect_banners,banner_limits={"workers":min(a.banner_workers,32),"max_endpoints":a.banner_max_endpoints,"max_bytes":a.banner_max_bytes,"read_timeout_seconds":a.banner_read_timeout},discovery_observations=discovery,discovery_configuration={"mode":mode,"ports":a.discovery_ports,"connect_timeout_seconds":a.discovery_connect_timeout,"max_endpoints":a.max_discovery_endpoints},tls_configuration={"enabled":a.collect_tls,"ports":a.tls_ports,"workers":a.tls_workers,"max_endpoints":a.tls_max_endpoints,"connect_timeout_seconds":a.tls_connect_timeout,"handshake_timeout_seconds":a.tls_handshake_timeout},name_observations=names,dns_configuration={"enabled":a.resolve_names,"workers":a.dns_workers,"timeout_seconds":a.dns_timeout,"timeout_guarantee":"best_effort","max_assets":a.dns_max_assets},profile_configuration={"name":a.profile,"version":a.profile_version,"overrides":getattr(a,"profile_overrides",[])},**extra)
+        report=builder(target_input=a.target,network=network,host_results=hosts,ports=a.ports,started_at=timestamp,completed_at=utc_timestamp(),duration_ms=duration,ping_timeout=a.ping_timeout,connect_timeout=a.connect_timeout,workers=a.workers,max_hosts=a.max_hosts,banners_enabled=a.collect_banners,banner_limits={"workers":min(a.banner_workers,32),"max_endpoints":a.banner_max_endpoints,"max_bytes":a.banner_max_bytes,"read_timeout_seconds":a.banner_read_timeout},discovery_observations=discovery,discovery_configuration={"mode":mode,"ports":a.discovery_ports,"connect_timeout_seconds":a.discovery_connect_timeout,"max_endpoints":a.max_discovery_endpoints},tls_configuration={"enabled":a.collect_tls,"ports":a.tls_ports,"workers":a.tls_workers,"max_endpoints":a.tls_max_endpoints,"connect_timeout_seconds":a.tls_connect_timeout,"handshake_timeout_seconds":a.tls_handshake_timeout},name_observations=names,dns_configuration={"enabled":a.resolve_names,"workers":a.dns_workers,"timeout_seconds":a.dns_timeout,"timeout_guarantee":"best_effort","max_assets":a.dns_max_assets},profile_configuration={"name":a.profile,"version":a.profile_version,"overrides":getattr(a,"profile_overrides",[])},**extra)
+        if a.schema_version=="2.1":
+            from scanner.contract import semantic_hash
+            report["configuration"]["target_selection"]=selection.policy; report["effective_configuration"]=dict(report["configuration"]); report["configuration_fingerprint"]=semantic_hash(report["effective_configuration"])
+        return report
     return build_report(target_input=a.target,network=network,host_port_results=hosts,ports=a.ports,timestamp=timestamp,duration_ms=duration,ping_timeout=a.ping_timeout,connect_timeout=a.connect_timeout,workers=a.workers,max_hosts=a.max_hosts)
