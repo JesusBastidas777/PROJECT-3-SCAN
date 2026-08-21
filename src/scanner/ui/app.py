@@ -29,15 +29,36 @@ class SCANApplication:
         readiness = self.service.check()
         if not readiness.data.get("ready"):
             raise RuntimeError("SCAN runtime is unavailable")
-        summary = self.workflow.operational_summary().data
-        status = summary.get("status", {})
+        status = self.service.status().data
         current = status.get("status", status)
-        latest = summary.get("latest_scan")
-        payload = latest if self.view == "overview" and latest else current
+        response = self.workflow.view(self.view, limit=self.max_rows)
+        renderer = __import__(f"scanner.ui.screens.{self.view}", fromlist=["render"])
+        payload = renderer.render(response.data, max_rows=self.max_rows)
         return UIState(
             view=self.view, payload=payload, status=str(current.get("lifecycle", "idle")),
             updated_at=str(current.get("timestamp") or datetime.now(timezone.utc).isoformat()),
         )
+
+    def plan(self, request):
+        return self.workflow.plan(request)
+
+    def start(self, request):
+        return self.workflow.start(request)
+
+    def cancel(self, scan_id):
+        return self.workflow.cancel(scan_id)
+
+    def resume(self, checkpoint_id):
+        return self.workflow.resume(checkpoint_id)
+
+    def select_baseline(self, snapshot_id):
+        return self.workflow.select_baseline(snapshot_id)
+
+    def export(self, scan_id, destination, *, overwrite=False):
+        return self.workflow.export(scan_id, destination, overwrite=overwrite)
+
+    def retry_failed_publication(self, scan_id):
+        return self.workflow.retry_failed_publication(scan_id)
 
     def refresh(self, previous: UIState | None = None, *, include_detail: bool = False) -> UIState:
         try:

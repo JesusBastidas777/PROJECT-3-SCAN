@@ -19,7 +19,8 @@ class UIRefreshTests(unittest.TestCase):
 
     def test_refresh_does_not_import_or_execute_pipeline(self):
         service = Mock(); service.check.return_value.data = {"ready": True}
-        workflow = Mock(); workflow.operational_summary.return_value.data = {"status": {"state": "idle"}, "latest_scan": None}
+        service.status.return_value.data = {"state": "idle"}
+        workflow = Mock(); workflow.view.return_value.data = {"overview": {}}
         with patch("scanner.scan_pipeline.execute_scan") as acquisition:
             state = SCANApplication(service, workflow=workflow).refresh()
             acquisition.assert_not_called()

@@ -194,7 +194,13 @@ class SCANService:
             raise RequestInvalid("limit must be between 1 and 1000")
         reports = [self._load_scan(path) for path in self._scan_paths()]
         reports.sort(key=lambda item: str(item.get("completed_at", item.get("timestamp", ""))), reverse=True)
-        items = [{key: report.get(key) for key in ("scan_id", "completed_at", "duration_ms", "partial")} for report in reports[:limit]]
+        items = [{
+            "scan_id": report.get("scan_id"), "completed_at": report.get("completed_at"),
+            "target": report.get("target", {}).get("network"), "duration_ms": report.get("duration_ms"),
+            "partial": bool(report.get("partial")),
+            "resumed": report.get("acquisition", {}).get("mode") == "resumed",
+            "baseline_eligible": bool(report.get("baseline_eligible", False)),
+        } for report in reports[:limit]]
         return SCANResponseV1(data={"scans": items}, metadata={"count": len(items)})
 
     def get_findings(self, scan_id: str) -> SCANResponseV1:
@@ -235,3 +241,18 @@ class SCANService:
             for state in counts:
                 counts[state] = sum(1 for path in (root / state).glob("outbox_*.json") if not path.is_symlink())
         return SCANResponseV1(data={"outbox": counts})
+
+    def export_scan(self, scan_id: str, destination: Path, *, overwrite: bool = False) -> SCANResponseV1:
+        report = self.get_scan(scan_id).data["scan"]
+        destination = Path(destination)
+        if destination.exists() and not overwrite:
+            raise RequestInvalid("export destination exists")
+        write_report_atomic(report, destination)
+        return SCANResponseV1(data={"scan_id": scan_id, "destination": str(destination)})
+
+    def retry_publication(self, scan_id: str) -> SCANResponseV1:
+        if self.runtime is None:
+            raise RequestInvalid("publication retry requires a runtime")
+        report = self.get_scan(scan_id).data["scan"]
+        publication = publish_result(report, self.runtime)
+        return SCANResponseV1(data={"scan_id": scan_id, "operational_view": publication["view"]})
