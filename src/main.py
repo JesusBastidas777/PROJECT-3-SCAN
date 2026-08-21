@@ -37,6 +37,7 @@ from scanner.neighbors import collect_neighbor_evidence
 from scanner.http_probe import collect_open_http, DEFAULT_HTTP_PORTS, MAX_HTTP_WORKERS
 from scanner.commands.query import query_main
 from scanner.commands.history import history_read_main
+from scanner.commands.feed import feed_main
 
 DEFAULT_PORTS = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3389]
 DEFAULT_WORKERS = 64
@@ -326,6 +327,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return compare_main(arguments[1:])
     if arguments[:1] == ["query"]:
         return query_main(arguments[1:])
+    if arguments[:1] == ["feed"]:
+        return feed_main(arguments[1:])
     if arguments[:2] == ["history", "retain"]:
         return history_retain_main(arguments[2:])
     if arguments[:1] == ["history"]:

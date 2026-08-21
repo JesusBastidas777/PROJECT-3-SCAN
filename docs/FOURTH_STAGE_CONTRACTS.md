@@ -44,3 +44,9 @@ measurement/presentation fingerprints; snapshot 1.0 remains readable for report
 no discovery, endpoint, DNS, TLS, HTTP or neighbor probes. JSON query output is
 versioned; NDJSON and text are deterministic projections. Inputs are size
 limited, UTF-8 strict, version validated and reject symlinks by default.
+
+Feed 1.0 is a compact derived projection, never a replacement for the report.
+It retains coverage counts, compact assets/endpoints and opaque report/evidence
+references while omitting raw banners, PTR text, certificate bodies and HTTP
+headers. JSON has a document byte budget; NDJSON is emitted record by record.
+Hash-only address output remains correlatable and is not anonymization.
