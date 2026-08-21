@@ -11,7 +11,7 @@ from typing import Any
 from scanner.inventory import build_inventory, target_id
 from scanner.discovery_evidence import discovery_summary
 
-SUPPORTED_REPORT_VERSIONS = ("1.0", "2.0")
+SUPPORTED_REPORT_VERSIONS = ("1.0", "2.0", "2.1")
 
 
 def canonical_json(value: Any) -> str:
@@ -73,6 +73,30 @@ def build_report_v2(*, target_input: str, network: object, host_results: Mapping
     }
 
 
+def build_report_v21(**arguments: Any) -> dict[str, Any]:
+    """Build report 2.1 while leaving the report-2.0 builder frozen."""
+
+    from scanner.coverage import build_coverage
+
+    report = build_report_v2(**arguments)
+    report["schema_version"] = "2.1"
+    report["scanner"] = {"name": "SCAN", "version": "2.1.0"}
+    report["coverage"] = build_coverage(
+        observations=report["observations"],
+        discovery_observations=report.get("discovery_observations", []),
+        name_observations=report.get("name_observations", []),
+        configuration=report["configuration"],
+    )
+    report["capability_execution"] = {
+        name: {
+            "support": phase["support"], "backend": phase["backend"],
+            "enabled": phase["enabled"], "complete_within_configured_scope": phase["complete_within_configured_scope"],
+        }
+        for name, phase in report["coverage"]["phases"].items()
+    }
+    return report
+
+
 def validate_report_shape(report: Mapping[str, Any]) -> None:
     version = report.get("schema_version")
     if version not in SUPPORTED_REPORT_VERSIONS:
@@ -100,3 +124,7 @@ def validate_report_shape(report: Mapping[str, Any]) -> None:
     if any(item.get("asset_id") not in asset_ids for item in report["observations"]): raise ValueError("observation references unknown asset")
     states = {state: sum(item.get("state") == state for item in report["observations"]) for state in ("open", "closed", "unknown", "error")}
     if report["summary"].get("states") != states or report["summary"].get("observations") != len(report["observations"]): raise ValueError("report summary does not match observations")
+    if version == "2.1":
+        from scanner.coverage import validate_coverage
+        if not isinstance(report.get("capability_execution"), Mapping): raise ValueError("missing capability execution")
+        validate_coverage(report.get("coverage", {}))

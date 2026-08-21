@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:project-scan:report:2.1",
+  "type": "object",
+  "required": ["schema_version", "document_type", "scan_id", "scanner", "started_at", "completed_at", "duration_ms", "target", "configuration", "effective_configuration", "capabilities", "capability_execution", "coverage", "summary", "assets", "observations", "errors"],
+  "properties": {
+    "schema_version": {"const": "2.1"},
+    "document_type": {"const": "scan_report"},
+    "scan_id": {"type": "string", "pattern": "^scan_[a-f0-9]{24}$"},
+    "scanner": {"type": "object", "required": ["name", "version"]},
+    "target": {"type": "object", "required": ["input", "network", "target_id", "ip_version"]},
+    "configuration": {"type": "object"},
+    "effective_configuration": {"type": "object"},
+    "capabilities": {"type": "object"},
+    "capability_execution": {"type": "object"},
+    "coverage": {"type": "object", "required": ["model_version", "phases"]},
+    "summary": {"type": "object", "required": ["assets_observed", "observations", "states", "errors"]},
+    "assets": {"type": "array"},
+    "observations": {"type": "array"},
+    "errors": {"type": "array"}
+  }
+}

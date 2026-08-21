@@ -1,0 +1,167 @@
+"""Report 2.1 coverage and runtime capability descriptors."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from typing import Any
+
+PHASE_ORDER = (
+    "discovery",
+    "endpoint_tcp",
+    "banners",
+    "tls",
+    "dns",
+    "neighbors",
+    "http",
+    "enrichment",
+)
+
+
+def phase_descriptor(
+    capability_id: str,
+    *,
+    supported: bool,
+    backend: str,
+    enabled: bool,
+    eligible: int = 0,
+    attempted: int = 0,
+    observed: int = 0,
+    skipped: int = 0,
+    timeout: int = 0,
+    error: int = 0,
+    truncated: bool = False,
+    effective_limits: Mapping[str, Any] | None = None,
+    reason: str | None = None,
+    evidence_refs: Sequence[str] = (),
+    error_refs: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Build one coherent phase descriptor without target-state inference."""
+
+    counts = (eligible, attempted, observed, skipped, timeout, error)
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in counts):
+        raise ValueError("coverage counts must be non-negative integers")
+    if attempted > eligible or observed + timeout + error > attempted:
+        raise ValueError("incoherent coverage counts")
+    support: dict[str, Any] = {"status": "supported" if supported else "unsupported"}
+    if reason:
+        support["reason"] = reason
+    complete = bool(supported and enabled and not truncated and skipped == 0 and attempted == eligible)
+    return {
+        "capability_id": capability_id,
+        "support": support,
+        "backend": backend,
+        "enabled": enabled,
+        "eligible": eligible,
+        "attempted": attempted,
+        "observed": observed,
+        "skipped": skipped,
+        "timeout": timeout,
+        "error": error,
+        "truncated": truncated,
+        "effective_limits": dict(effective_limits or {}),
+        "complete_within_configured_scope": complete,
+        "evidence_refs": sorted(set(evidence_refs)),
+        "error_refs": sorted(set(error_refs)),
+    }
+
+
+def _endpoint_phase(items: Sequence[Mapping[str, Any]], limits: Mapping[str, Any]) -> dict[str, Any]:
+    timeouts = sum(item.get("state_evidence", {}).get("result") == "timeout" for item in items)
+    errors = sum(item.get("state") == "error" for item in items)
+    return phase_descriptor(
+        "endpoint_tcp", supported=True, backend="python_socket", enabled=True,
+        eligible=len(items), attempted=len(items),
+        observed=sum(item.get("state") in {"open", "closed"} for item in items),
+        timeout=timeouts, error=errors, effective_limits=limits,
+        evidence_refs=[str(item["observation_id"]) for item in items if item.get("observation_id")],
+    )
+
+
+def _nested_phase(
+    capability_id: str,
+    field: str,
+    observations: Sequence[Mapping[str, Any]],
+    *,
+    enabled: bool,
+    backend: str,
+    limits: Mapping[str, Any],
+) -> dict[str, Any]:
+    eligible_items = [item for item in observations if field in item]
+    statuses = [str(item[field].get("status")) for item in eligible_items]
+    attempted = sum(status != "skipped" for status in statuses)
+    return phase_descriptor(
+        capability_id, supported=True, backend=backend, enabled=enabled,
+        eligible=len(eligible_items), attempted=attempted,
+        observed=sum(status == "collected" for status in statuses),
+        skipped=sum(status == "skipped" for status in statuses),
+        timeout=sum(status == "timeout" for status in statuses),
+        error=sum(status in {"error", "handshake_failed"} for status in statuses),
+        truncated=any(bool(item[field].get("truncated")) or item[field].get("error", {}).get("code") == "endpoint_limit" for item in eligible_items),
+        effective_limits=limits,
+        evidence_refs=[str(item["observation_id"]) for item in eligible_items],
+    )
+
+
+def build_coverage(
+    *,
+    observations: Sequence[Mapping[str, Any]],
+    discovery_observations: Sequence[Mapping[str, Any]],
+    name_observations: Sequence[Mapping[str, Any]],
+    configuration: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Derive ordered execution coverage solely from recorded evidence/config."""
+
+    discovery_results = [str(item.get("result")) for item in discovery_observations]
+    discovery = phase_descriptor(
+        "discovery", supported=not discovery_results or "unsupported" not in discovery_results,
+        backend="icmp_subprocess_and_python_socket", enabled=True,
+        eligible=len(discovery_results), attempted=len(discovery_results),
+        observed=sum(value in {"response", "connected", "connection_refused"} for value in discovery_results),
+        timeout=sum(value == "timeout" for value in discovery_results),
+        error=sum(value in {"error", "probe_error"} for value in discovery_results),
+        effective_limits={
+            "workers": configuration.get("workers"),
+            "timeout_seconds": configuration.get("ping_timeout_seconds"),
+            "max_hosts": configuration.get("max_hosts"),
+        },
+        reason="ping_backend_unavailable" if "unsupported" in discovery_results else None,
+        evidence_refs=[str(item["discovery_observation_id"]) for item in discovery_observations],
+    )
+    endpoint = _endpoint_phase(observations, {"workers": configuration.get("workers"), "timeout_seconds": configuration.get("connect_timeout_seconds"), "ports": list(configuration.get("ports", []))})
+    banners = _nested_phase("banners", "banner", observations, enabled=bool(configuration.get("banners_enabled")), backend="python_socket_passive_read", limits=configuration.get("banner_limits") or {})
+    tls_config = configuration.get("tls", {})
+    tls = _nested_phase("tls", "tls", observations, enabled=bool(tls_config.get("enabled")), backend="python_ssl", limits=tls_config)
+    dns_config = configuration.get("dns", {})
+    dns_statuses = [str(item.get("status")) for item in name_observations]
+    dns = phase_descriptor(
+        "dns", supported=True, backend="system_resolver", enabled=bool(dns_config.get("enabled")),
+        eligible=len(dns_statuses), attempted=sum(value != "skipped" for value in dns_statuses),
+        observed=sum(value in {"resolved", "no_name"} for value in dns_statuses),
+        skipped=sum(value == "skipped" for value in dns_statuses), timeout=sum(value == "timeout" for value in dns_statuses),
+        error=sum(value == "error" for value in dns_statuses), truncated=any(value == "skipped" for value in dns_statuses),
+        effective_limits=dns_config,
+    )
+    phases = {
+        "discovery": discovery,
+        "endpoint_tcp": endpoint,
+        "banners": banners,
+        "tls": tls,
+        "dns": dns,
+        "neighbors": phase_descriptor("neighbors", supported=False, backend="not_implemented", enabled=False, reason="not_implemented_until_day_49"),
+        "http": phase_descriptor("http", supported=False, backend="not_implemented", enabled=False, reason="not_implemented_until_day_50"),
+        "enrichment": phase_descriptor("enrichment", supported=True, backend="deterministic_rules", enabled=True, eligible=len(observations), attempted=len(observations), observed=len(observations), effective_limits={"workers": 0}),
+    }
+    return {"model_version": "1.0", "phases": {name: phases[name] for name in PHASE_ORDER}}
+
+
+def validate_coverage(value: Mapping[str, Any]) -> None:
+    if value.get("model_version") != "1.0" or list(value.get("phases", {})) != list(PHASE_ORDER):
+        raise ValueError("invalid coverage model")
+    for name, phase in value["phases"].items():
+        if phase.get("capability_id") != name or phase.get("support", {}).get("status") not in {"supported", "unsupported"}:
+            raise ValueError("invalid coverage phase")
+        phase_descriptor(
+            name, supported=phase["support"]["status"] == "supported", backend=str(phase.get("backend")), enabled=bool(phase.get("enabled")),
+            eligible=phase.get("eligible"), attempted=phase.get("attempted"), observed=phase.get("observed"), skipped=phase.get("skipped"), timeout=phase.get("timeout"), error=phase.get("error"),
+            truncated=bool(phase.get("truncated")), effective_limits=phase.get("effective_limits", {}), reason=phase["support"].get("reason"), evidence_refs=phase.get("evidence_refs", ()), error_refs=phase.get("error_refs", ()),
+        )

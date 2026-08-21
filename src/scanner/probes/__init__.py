@@ -1,0 +1,1 @@
+"""Shared probe execution contracts."""

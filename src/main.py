@@ -22,7 +22,7 @@ from scanner.discovery import (
 from scanner.ports import scan_hosts
 from scanner.banners import collect_open_banners, DEFAULT_BANNER_WORKERS, DEFAULT_MAX_BYTES, DEFAULT_MAX_ENDPOINTS
 from scanner.report import build_report, serialize_report, utc_timestamp, write_report_atomic
-from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2
+from scanner.contract import SUPPORTED_REPORT_VERSIONS, build_report_v2, build_report_v21
 from scanner.snapshots import save_snapshot
 from scanner.events import events_from_report
 from scanner.discovery_tcp import collect_tcp_discovery, responsive_addresses, reusable_endpoint_observations
@@ -250,9 +250,10 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             max_bytes=args.banner_max_bytes,
         )
     duration_ms = max(0, round((time.monotonic() - started) * 1000))
-    if args.schema_version == "2.0":
+    if args.schema_version in {"2.0", "2.1"}:
         completed_at = utc_timestamp()
-        return build_report_v2(
+        builder = build_report_v21 if args.schema_version == "2.1" else build_report_v2
+        return builder(
             target_input=args.target, network=network, host_results=host_results,
             ports=args.ports, started_at=timestamp, completed_at=completed_at,
             duration_ms=duration_ms, ping_timeout=args.ping_timeout,
