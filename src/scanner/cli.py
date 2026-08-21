@@ -20,6 +20,9 @@ from scanner.scan_parser import create_parser
 
 def dispatch(argv: Sequence[str], *, scan_runner: Callable[[Sequence[str]],int]=scan_main, history_retain_runner: Callable[[Sequence[str]],int]|None=None) -> int:
     args=list(argv)
+    if args[:1]==["ui"]:
+        from scanner.ui.app import ui_main
+        return ui_main(args[1:])
     if args[:1]==["check"]: return health_main(args[1:],check=True)
     if args[:1]==["status"]: return status_main(args[1:])
     if args[:1]==["health"]: return health_main(args[1:])

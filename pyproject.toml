@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forex-scan"
+version = "1.0.0rc1"
+description = "Local defensive network evidence sensor for FOREX"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+ui = ["rich==15.0.0"]
+
+[project.scripts]
+scan = "main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scanner*"]
