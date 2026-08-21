@@ -26,6 +26,7 @@ class SCANConfig:
     reports_dir: Path
     history_dir: Path | None = None
     outbox_dir: Path | None = None
+    runtime: Any = None
 
 
 @dataclass(frozen=True)

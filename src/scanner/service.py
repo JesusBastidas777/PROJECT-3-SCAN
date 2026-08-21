@@ -11,6 +11,7 @@ from scanner.findings import findings_from_report
 from scanner.loaders import load_json_document, load_report_or_snapshot, load_snapshot
 from scanner.models import SCANConfig, SCANResponseV1
 from scanner.planner import build_scan_plan
+from scanner.readiness import build_readiness
 
 
 class SCANService:
@@ -22,6 +23,13 @@ class SCANService:
         self.config = config
 
     def check(self) -> SCANResponseV1:
+        if self.config.runtime is not None:
+            readiness = build_readiness(self.config.runtime)
+            return SCANResponseV1(
+                status="success" if readiness["ready"] else "degraded",
+                data={"ready": readiness["ready"], "readiness": readiness},
+                metadata={"operation": "check"},
+            )
         available = self.config.reports_dir.exists()
         return SCANResponseV1(
             status="success" if available else "degraded",
