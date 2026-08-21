@@ -9,12 +9,14 @@ from scanner.commands.scan import scan_main
 from scanner.commands.plan import plan_main
 from scanner.commands.validate import validate_main
 from scanner.commands.migrate import migrate_main
+from scanner.commands.outbox import outbox_main
 
 def dispatch(argv: Sequence[str], *, scan_runner: Callable[[Sequence[str]],int]=scan_main, history_retain_runner: Callable[[Sequence[str]],int]|None=None) -> int:
     args=list(argv)
     if args[:1]==["plan"]: return plan_main(args[1:])
     if args[:1]==["validate"]: return validate_main(args[1:])
     if args[:1]==["migrate"]: return migrate_main(args[1:])
+    if args[:1]==["outbox"]: return outbox_main(args[1:])
     if args[:1]==["compare"]: return compare_main(args[1:])
     if args[:1]==["query"]: return query_main(args[1:])
     if args[:1]==["feed"]: return feed_main(args[1:])
