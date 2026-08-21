@@ -1,5 +1,7 @@
 # SCAN
 
+The fifth stage adds deterministic planning, controlled target policies, execution budgets, offline validation/migration, opt-in checkpoints and a local FOREX outbox. See `docs/FIFTH_STAGE_CONTRACTS.md`. SCAN remains an evidence sensor.
+
 SCAN is a small network discovery and TCP port collection tool. It discovers
 reachable hosts with ICMP, checks selected TCP ports, and emits deterministic,
 versioned JSON. SCAN reports observed facts; it does not assess vulnerabilities,

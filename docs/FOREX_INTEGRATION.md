@@ -1,5 +1,7 @@
 # SCAN to FOREX integration
 
+Fifth-stage integration can use Feed 1.1 and local Outbox Item 1.0. FOREX validates, deduplicates and explicitly ACKs delivery. ACK is not semantic acceptance. Partial, excluded, budget-stopped and resumed evidence retain distinct coverage and temporal semantics.
+
 Use `python3 src/main.py TARGET --output -` for frozen schema 1.0, or add
 `--schema-version 2.0` for assets, precise observations, service hints,
 fingerprints, capabilities and structured errors. Stdout remains one JSON

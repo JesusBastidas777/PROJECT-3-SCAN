@@ -8,10 +8,11 @@ from typing import Any
 from scanner.contract import semantic_hash
 
 PRESENTATION_KEYS = frozenset({"output", "events_output", "events_format", "feed", "query"})
+MEASUREMENT_KEYS=frozenset({"ports","max_hosts","ping_timeout_seconds","connect_timeout_seconds","banners_enabled","banner_limits","discovery_configuration","discovery","tls","dns","profile","neighbors","http","correlation","target_selection","privacy"})
 
 
 def _without_presentation(configuration: Mapping[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in configuration.items() if key not in PRESENTATION_KEYS}
+    return {key: configuration[key] for key in sorted(MEASUREMENT_KEYS) if key in configuration}
 
 
 def baseline_identity(report: Mapping[str, Any], *, presentation: Mapping[str, Any] | None = None) -> dict[str, Any]:

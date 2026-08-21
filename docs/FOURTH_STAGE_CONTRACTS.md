@@ -1,5 +1,7 @@
 # SCAN fourth-stage evidence contracts
 
+This remains the frozen fourth-stage reference. Fifth-stage additive contracts are documented in `FIFTH_STAGE_CONTRACTS.md`; Report 1.0, 2.0 and 2.1 remain readable.
+
 Report 2.1 adds an execution coverage model. Coverage describes runtime support,
 configuration, bounded attempts and outcomes; it is neither risk nor a claim of
 total network visibility. Unsupported capability describes the local runtime,

@@ -16,8 +16,9 @@ from scanner.baselines import baseline_identity
 
 def build_snapshot(report: Mapping[str, Any], previous_snapshot_id: str | None = None) -> dict[str, Any]:
     validate_report_shape(report)
-    if report["schema_version"] not in {"2.0", "2.1"}:
+    if report["schema_version"] not in {"2.0", "2.1", "2.2"}:
         raise ValueError("snapshots require report schema 2.0 or 2.1")
+    if report["schema_version"]=="2.2" and not report.get("baseline_eligible",False): raise ValueError("partial or resumed report is not baseline eligible")
     configuration_fingerprint = semantic_hash(report["configuration"])
     content_fingerprint = semantic_hash(canonical_content(report))
     snapshot_id = "snapshot_" + semantic_hash({"scan_id": report["scan_id"], "content": content_fingerprint})[:24]
@@ -32,6 +33,8 @@ def build_snapshot(report: Mapping[str, Any], previous_snapshot_id: str | None =
     if report["schema_version"] == "2.1":
         identity = baseline_identity(report)
         value.update({"snapshot_schema_version":"1.1","measurement_scope_fingerprint":identity["measurement_scope_fingerprint"],"presentation_fingerprint":identity["presentation_fingerprint"]})
+    elif report["schema_version"]=="2.2":
+        identity=baseline_identity(report); value.update({"snapshot_schema_version":"1.2","measurement_scope_fingerprint":identity["measurement_scope_fingerprint"],"execution_policy_fingerprint":report["execution_policy_fingerprint"],"presentation_fingerprint":identity["presentation_fingerprint"],"baseline_eligible":True})
     return value
 
 
@@ -42,11 +45,12 @@ def validate_snapshot(snapshot: Mapping[str, Any]) -> None:
     if not isinstance(snapshot["report"], Mapping): raise ValueError("invalid snapshot report")
     validate_report_shape(snapshot["report"])
     report_version = snapshot["report"]["schema_version"]
-    if report_version not in {"2.0", "2.1"} or snapshot["target_id"] != snapshot["report"]["target"]["target_id"]: raise ValueError("invalid snapshot contract")
-    if report_version == "2.1":
-        if snapshot.get("snapshot_schema_version") != "1.1" or not isinstance(snapshot.get("measurement_scope_fingerprint"), str): raise ValueError("invalid snapshot 1.1 contract")
+    if report_version not in {"2.0", "2.1", "2.2"} or snapshot["target_id"] != snapshot["report"]["target"]["target_id"]: raise ValueError("invalid snapshot contract")
+    if report_version in {"2.1","2.2"}:
+        expected="1.2" if report_version=="2.2" else "1.1"
+        if snapshot.get("snapshot_schema_version") != expected or not isinstance(snapshot.get("measurement_scope_fingerprint"), str): raise ValueError("invalid snapshot contract version")
         identity = baseline_identity(snapshot["report"])
-        if snapshot.get("configuration_fingerprint") != semantic_hash(snapshot["report"]["configuration"]) or snapshot.get("measurement_scope_fingerprint") != identity["measurement_scope_fingerprint"] or snapshot.get("presentation_fingerprint") != identity["presentation_fingerprint"] or snapshot.get("content_fingerprint") != semantic_hash(canonical_content(snapshot["report"])): raise ValueError("snapshot 1.1 fingerprint mismatch")
+        if snapshot.get("configuration_fingerprint") != semantic_hash(snapshot["report"]["configuration"]) or snapshot.get("measurement_scope_fingerprint") != identity["measurement_scope_fingerprint"] or snapshot.get("presentation_fingerprint") != identity["presentation_fingerprint"] or snapshot.get("content_fingerprint") != semantic_hash(canonical_content(snapshot["report"])): raise ValueError("snapshot fingerprint mismatch")
     elif "snapshot_schema_version" in snapshot and snapshot.get("snapshot_schema_version") != "1.0":
         raise ValueError("invalid snapshot 1.0 contract")
 

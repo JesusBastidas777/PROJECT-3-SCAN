@@ -178,3 +178,8 @@ def validate_report_shape(report: Mapping[str, Any]) -> None:
             if not set(phase.get("evidence_refs", [])) <= known_evidence: raise ValueError("coverage references unknown evidence")
         for relation in report.get("evidence_clusters", []):
             if relation.get("physical_device_asserted") is not False or not set(relation.get("members", [])) <= known_assets or not set(relation.get("evidence_refs", [])) <= known_evidence: raise ValueError("invalid candidate relation references")
+        if version=="2.2":
+            required_22={"measurement_scope_fingerprint","execution_policy_fingerprint","partial","termination","acquisition","baseline_eligible"}
+            if required_22-report.keys() or report["coverage"].get("model_version")!="2.0": raise ValueError("invalid report 2.2 extension")
+            if bool(report["partial"]) != bool(report["termination"]): raise ValueError("report partial/termination mismatch")
+            if report["acquisition"].get("mode")=="resumed" and report.get("baseline_eligible") is not False: raise ValueError("resumed report cannot be baseline eligible")

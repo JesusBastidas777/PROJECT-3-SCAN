@@ -1,5 +1,7 @@
 # Report schema migration: 1.0 to 2.0
 
+Fifth-stage migrations use an explicit registry. Report 2.1 to 2.2 represents unavailable execution policy and acquisition segments as `not_recorded`; it never synthesizes evidence. Unsupported routes fail closed and inputs are not overwritten.
+
 Schema 1.0 remains the default and preserves historical `hosts[].ports[]`
 `OPEN`/`CLOSED`. Schema 2.0 is selected with `--schema-version 2.0`.
 

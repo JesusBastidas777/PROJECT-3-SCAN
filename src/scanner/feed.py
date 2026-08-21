@@ -18,13 +18,15 @@ def _address(value: str, privacy: str) -> dict[str, str]:
 
 def _coverage_summary(report: Mapping[str, Any]) -> dict[str, Any]:
     phases = report.get("coverage", {}).get("phases", {})
+    if report.get("coverage",{}).get("model_version")=="2.0":
+        return {name:{"status":phase.get("status"),**{key:phase.get("counts",{}).get(key) for key in ("completed","observed","timeout","error","not_started")},"complete_within_configured_scope":phase.get("complete_within_configured_scope")} for name,phase in phases.items()}
     return {name:{key:phase.get(key) for key in ("enabled","attempted","observed","timeout","error","truncated","complete_within_configured_scope")} for name,phase in phases.items()}
 
 
 def build_feed(report: Mapping[str, Any], *, snapshot: Mapping[str, Any] | None = None, privacy: str = "hash-only", max_assets: int = 1024, max_endpoints: int = 4096, max_bytes: int = 4 * 1024 * 1024) -> dict[str, Any]:
     """Project validated evidence and deterministically remove whole tail records."""
     validate_report_shape(report)
-    if report.get("schema_version") not in {"2.0","2.1"} or privacy not in {"hash-only","full"} or min(max_assets,max_endpoints,max_bytes) < 1:
+    if report.get("schema_version") not in {"2.0","2.1","2.2"} or privacy not in {"hash-only","full"} or min(max_assets,max_endpoints,max_bytes) < 1:
         raise ValueError("invalid feed input or limits")
     assets = sorted(report.get("assets", []),key=lambda item:str(item.get("asset_id")))
     observations = sorted(report.get("observations", []),key=lambda item:(str(item.get("asset_id")),str(item.get("transport")),int(item.get("port",0))))
@@ -45,7 +47,7 @@ def build_feed(report: Mapping[str, Any], *, snapshot: Mapping[str, Any] | None 
         if isinstance(item.get("service"),Mapping): value["service_hint"]=item["service"].get("name")
         endpoint_summaries.append(value)
     report_ref = str(snapshot["snapshot_id"]) if snapshot else "report_"+semantic_hash(canonical_content(report))[:24]
-    feed={"feed_schema_version":FEED_SCHEMA_VERSION,"document_type":"scan_sensor_feed","scan_id":report["scan_id"],"target_id":report["target"]["target_id"],"report_ref":report_ref,"report_schema_version":report["schema_version"],"completed_at":report["completed_at"],"configuration_fingerprint":report.get("configuration_fingerprint") or baseline_identity(report)["configuration_fingerprint"],"coverage_summary":_coverage_summary(report),"asset_summaries":asset_summaries,"endpoint_observations":endpoint_summaries,"evidence_refs":[item["observation_id"] for item in endpoint_summaries],"event_refs":[],"truncated":len(selected_assets)<len(assets) or len(selected_endpoints)<len(eligible_endpoints),"omitted_counts":{"assets":len(assets)-len(selected_assets),"endpoints":len(eligible_endpoints)-len(selected_endpoints)},"errors_summary":{"count":len(report.get("errors",[]))}}
+    feed={"feed_schema_version":"1.1" if report.get("schema_version")=="2.2" else FEED_SCHEMA_VERSION,"document_type":"scan_sensor_feed","scan_id":report["scan_id"],"target_id":report["target"]["target_id"],"report_ref":report_ref,"report_schema_version":report["schema_version"],"completed_at":report["completed_at"],"configuration_fingerprint":report.get("configuration_fingerprint") or baseline_identity(report)["configuration_fingerprint"],"coverage_summary":_coverage_summary(report),"asset_summaries":asset_summaries,"endpoint_observations":endpoint_summaries,"evidence_refs":[item["observation_id"] for item in endpoint_summaries],"event_refs":[],"truncated":len(selected_assets)<len(assets) or len(selected_endpoints)<len(eligible_endpoints),"omitted_counts":{"assets":len(assets)-len(selected_assets),"endpoints":len(eligible_endpoints)-len(selected_endpoints)},"errors_summary":{"count":len(report.get("errors",[]))}}
     minimum=dict(feed); minimum["asset_summaries"]=[]; minimum["endpoint_observations"]=[]; minimum["evidence_refs"]=[]; minimum["truncated"]=True
     if len(canonical_json(minimum).encode("utf-8"))+1 > max_bytes: raise ValueError("feed byte budget cannot hold minimum envelope")
     while len(canonical_json(feed).encode("utf-8"))+1 > max_bytes:
@@ -64,7 +66,7 @@ def build_feed(report: Mapping[str, Any], *, snapshot: Mapping[str, Any] | None 
 
 def validate_feed(value: Mapping[str, Any]) -> None:
     required={"feed_schema_version","document_type","scan_id","target_id","report_ref","report_schema_version","completed_at","configuration_fingerprint","coverage_summary","asset_summaries","endpoint_observations","evidence_refs","event_refs","truncated","omitted_counts","errors_summary"}
-    if required-value.keys() or value.get("feed_schema_version")!="1.0" or value.get("document_type")!="scan_sensor_feed": raise ValueError("invalid feed contract")
+    if required-value.keys() or value.get("feed_schema_version") not in {"1.0","1.1"} or value.get("document_type")!="scan_sensor_feed": raise ValueError("invalid feed contract")
     refs=[item.get("observation_id") for item in value["endpoint_observations"]]
     if value["evidence_refs"]!=refs or len(refs)!=len(set(refs)) or any(str(value["report_ref"]).startswith(prefix) for prefix in ("/","\\")): raise ValueError("invalid feed references")
     if not isinstance(value.get("omitted_counts"), Mapping) or any(not isinstance(value["omitted_counts"].get(key), int) or value["omitted_counts"][key] < 0 for key in ("assets","endpoints")): raise ValueError("invalid feed omitted counts")

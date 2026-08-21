@@ -49,7 +49,7 @@ def acknowledge(root: Path,item_id: str,*,claim_token: str,content_hash: str) ->
         acknowledged=root/"acknowledged"/(item_id+".json")
         if acknowledged.exists():
             item=load_json_document(acknowledged)
-            if item.get("content_hash")!=content_hash: raise ValueError("ACK content hash mismatch")
+            if item.get("content_hash")!=content_hash or item.get("claim",{}).get("claim_token")!=claim_token: raise ValueError("ACK retry mismatch")
             return item
         source=root/"processing"/(item_id+".json"); item=load_json_document(source); validate_item(item)
         if item.get("claim",{}).get("claim_token")!=claim_token or item["content_hash"]!=content_hash: raise ValueError("invalid ACK token or content hash")
