@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:project-scan:snapshot:1.1",
+  "type":"object",
+  "required":["snapshot_schema_version","snapshot_id","scan_id","target_id","configuration_fingerprint","measurement_scope_fingerprint","presentation_fingerprint","content_fingerprint","report"],
+  "properties":{
+    "snapshot_schema_version":{"const":"1.1"},
+    "snapshot_id":{"type":"string","pattern":"^snapshot_[a-f0-9]{24}$"},
+    "scan_id":{"type":"string","pattern":"^scan_"},"target_id":{"type":"string","pattern":"^target_"},
+    "configuration_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "measurement_scope_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "presentation_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "content_fingerprint":{"type":"string","pattern":"^[a-f0-9]{64}$"},"report":{"type":"object"}
+  }
+}

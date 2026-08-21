@@ -331,13 +331,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         report = collect_report(args)
         if args.history_dir is not None:
-            if args.schema_version != "2.0":
-                raise ValueError("--history-dir requires --schema-version 2.0")
+            if args.schema_version not in {"2.0", "2.1"}:
+                raise ValueError("--history-dir requires --schema-version 2.0 or 2.1")
             _, snapshot_path = save_snapshot(report, args.history_dir, lock_timeout=args.lock_timeout)
             print(f"SCAN: snapshot written to {snapshot_path}", file=sys.stderr)
         if args.events_output is not None:
-            if args.schema_version != "2.0":
-                raise ValueError("--events-output requires --schema-version 2.0")
+            if args.schema_version not in {"2.0", "2.1"}:
+                raise ValueError("--events-output requires --schema-version 2.0 or 2.1")
             if str(args.events_output) == "-" and args.output == "-":
                 raise ValueError("report and events cannot both use stdout")
             write_events(events_from_report(report, max_events=args.max_events), args.events_output, format_name=args.events_format, max_event_bytes=args.max_event_bytes, privacy=args.events_privacy)

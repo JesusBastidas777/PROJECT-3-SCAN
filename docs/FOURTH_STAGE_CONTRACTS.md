@@ -34,3 +34,8 @@ change produces an incomparable result rather than a network change.
 `--policy common-scope` can expose a measured intersection and always labels it
 partially comparable. Presentation settings have an independent fingerprint;
 privacy, probe, port, timeout and limit changes remain measurement semantics.
+
+Report 2.1 records the real discovery mode, a canonical effective configuration
+and its fingerprint. Snapshot 1.1 wraps report 2.1 and adds independent
+measurement/presentation fingerprints; snapshot 1.0 remains readable for report
+2.0. Loaders discriminate and validate versions before accessing nested fields.

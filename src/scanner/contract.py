@@ -84,10 +84,17 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
     http_configuration = dict(arguments.pop("http_configuration", {}))
     correlation_configuration = dict(arguments.pop("correlation_configuration", {"enabled": True, "max_signals": 4096, "max_relations": 256}))
     report = build_report_v2(**arguments)
+    discovery = report["configuration"].get("discovery_configuration", {})
+    report["configuration"]["discovery"] = discovery.get("mode", "icmp")
     report["configuration"]["neighbors"] = neighbor_configuration
     report["configuration"]["http"] = http_configuration
     report["configuration"]["correlation"] = correlation_configuration
     report["effective_configuration"] = dict(report["configuration"])
+    from scanner.configuration import effective_configuration
+    effective = effective_configuration(report["configuration"])
+    report["effective_configuration"] = effective.value
+    report["configuration_fingerprint"] = effective.fingerprint
+    report["scan_id"] = "scan_" + semantic_hash({"target": report["target"]["network"], "started_at": report["started_at"], "configuration": effective.value})[:24]
     report["schema_version"] = "2.1"
     report["scanner"] = {"name": "SCAN", "version": "2.1.0"}
     report["coverage"] = build_coverage(
