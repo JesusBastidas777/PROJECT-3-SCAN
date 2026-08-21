@@ -47,9 +47,15 @@ class SCANService:
         )
 
     def health(self) -> SCANResponseV1:
+        if self.config.runtime is not None and self.config.runtime.heartbeat_path.exists():
+            value = load_json_document(self.config.runtime.heartbeat_path)
+            return SCANResponseV1(data={"health": value})
         return self.check()
 
     def status(self) -> SCANResponseV1:
+        if self.config.runtime is not None and self.config.runtime.status_path.exists():
+            value = load_json_document(self.config.runtime.status_path)
+            return SCANResponseV1(data={"status": value})
         scans = self._scan_paths()
         return SCANResponseV1(data={"state": "idle", "scan_count": len(scans)})
 
@@ -175,6 +181,8 @@ class SCANService:
         raise ScanNotFound("scan was not found", {"scan_id": scan_id})
 
     def get_latest_scan(self) -> SCANResponseV1:
+        if self.config.runtime is not None and self.config.runtime.latest_scan_path.exists():
+            return SCANResponseV1(data={"scan": load_json_document(self.config.runtime.latest_scan_path)})
         reports = [self._load_scan(path) for path in self._scan_paths()]
         if not reports:
             raise ScanNotFound("no scans are available")
