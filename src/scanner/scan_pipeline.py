@@ -79,5 +79,11 @@ def execute_scan(configuration: ResolvedScanConfiguration) -> dict[str, Any]:
             if endpoint_omitted:
                 c=report["coverage"]["phases"]["endpoint_tcp"]["counts"]; c["eligible"]+=endpoint_omitted; c["selected"]+=endpoint_omitted; c["not_started"]+=endpoint_omitted; report["coverage"]["phases"]["endpoint_tcp"]["omission_reasons"]["budget_exhausted"]=endpoint_omitted
             ids=baseline_identity(report); report["measurement_scope_fingerprint"]=ids["measurement_scope_fingerprint"]; report["execution_policy_fingerprint"]=semantic_hash({"max_runtime":a.max_runtime,"max_network_attempts":a.max_network_attempts,"max_evidence_bytes":a.max_evidence_bytes,"max_evidence_records":a.max_evidence_records,"max_pending":a.max_pending})
+            from scanner.resume import acquisition_provenance,validate_resume
+            resumed=None; previous=[]
+            if a.resume:
+                from scanner.checkpoints import load_checkpoint
+                resumed=load_checkpoint(a.resume); validate_resume(resumed,target_id=report["target"]["target_id"],measurement_scope_fingerprint=report["measurement_scope_fingerprint"],execution_policy_fingerprint=report["execution_policy_fingerprint"]); previous=resumed.get("acquisition",{}).get("segments",[])
+            report["acquisition"]=acquisition_provenance(started_at=report["started_at"],completed_at=report["completed_at"],resumed_from=resumed.get("checkpoint_id") if resumed else None,previous_segments=previous); report["baseline_eligible"]=not report["partial"] and not resumed
         return report
     return build_report(target_input=a.target,network=network,host_port_results=hosts,ports=a.ports,timestamp=timestamp,duration_ms=duration,ping_timeout=a.ping_timeout,connect_timeout=a.connect_timeout,workers=a.workers,max_hosts=a.max_hosts)

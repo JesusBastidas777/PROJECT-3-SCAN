@@ -70,7 +70,8 @@ def resolve_request(request: ScanRequest) -> ResolvedScanConfiguration:
     values=dict(request.options)
     enabled=tuple(name for name,flag in (("banners",values.get("collect_banners")),("tls",values.get("collect_tls")),("dns",values.get("resolve_names")),("neighbors",values.get("collect_neighbors")),("http",values.get("collect_http"))) if flag)
     policy=TargetSelectionPolicy(tuple(values.get("include_host",())),tuple(values.get("exclude_host",())),tuple(values.get("include_cidr",())),tuple(values.get("exclude_cidr",())))
-    return ResolvedScanConfiguration(request,MeasurementConfiguration(tuple(values.get("ports",())),str(values.get("discovery","icmp")),enabled),ExecutionLimits(int(values.get("workers",64)),int(values.get("max_hosts",4096)),float(values.get("ping_timeout",1.0)),float(values.get("connect_timeout",1.0))),policy,OutputConfiguration(str(values.get("output","-")),values.get("history_dir"),values.get("events_output")),PrivacyConfiguration(str(values.get("events_privacy","full")),str(values.get("neighbor_privacy","hash-only"))),ResumePolicy(),tuple(sorted(values.items())))
+    resume=ResumePolicy(values.get("checkpoint_dir"),str(values["resume"]) if values.get("resume") else None)
+    return ResolvedScanConfiguration(request,MeasurementConfiguration(tuple(values.get("ports",())),str(values.get("discovery","icmp")),enabled),ExecutionLimits(int(values.get("workers",64)),int(values.get("max_hosts",4096)),float(values.get("ping_timeout",1.0)),float(values.get("connect_timeout",1.0))),policy,OutputConfiguration(str(values.get("output","-")),values.get("history_dir"),values.get("events_output")),PrivacyConfiguration(str(values.get("events_privacy","full")),str(values.get("neighbor_privacy","hash-only"))),resume,tuple(sorted(values.items())))
 
 
 @dataclass(frozen=True)

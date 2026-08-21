@@ -79,4 +79,5 @@ def create_parser() -> argparse.ArgumentParser:
     p.add_argument("--correlate-evidence",action=argparse.BooleanOptionalAction,default=True); p.add_argument("--correlation-max-signals",type=positive_integer,default=4096); p.add_argument("--correlation-max-relations",type=positive_integer,default=256)
     p.add_argument("--include-host",action="append",default=[]); p.add_argument("--exclude-host",action="append",default=[]); p.add_argument("--include-cidr",action="append",default=[]); p.add_argument("--exclude-cidr",action="append",default=[])
     p.add_argument("--max-runtime",type=positive_float); p.add_argument("--max-network-attempts",type=positive_integer); p.add_argument("--max-evidence-bytes",type=positive_integer); p.add_argument("--max-evidence-records",type=positive_integer); p.add_argument("--max-pending",type=positive_integer,default=128)
+    p.add_argument("--checkpoint-dir",type=Path); p.add_argument("--checkpoint-interval",type=positive_float,default=30.0); p.add_argument("--resume",type=Path); p.add_argument("--discard-checkpoint-on-success",action="store_true")
     return p
