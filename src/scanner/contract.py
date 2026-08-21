@@ -82,9 +82,11 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
     neighbor_execution = dict(arguments.pop("neighbor_execution", {}))
     neighbor_configuration = dict(arguments.pop("neighbor_configuration", {}))
     http_configuration = dict(arguments.pop("http_configuration", {}))
+    correlation_configuration = dict(arguments.pop("correlation_configuration", {"enabled": True, "max_signals": 4096, "max_relations": 256}))
     report = build_report_v2(**arguments)
     report["configuration"]["neighbors"] = neighbor_configuration
     report["configuration"]["http"] = http_configuration
+    report["configuration"]["correlation"] = correlation_configuration
     report["effective_configuration"] = dict(report["configuration"])
     report["schema_version"] = "2.1"
     report["scanner"] = {"name": "SCAN", "version": "2.1.0"}
@@ -104,6 +106,22 @@ def build_report_v21(**arguments: Any) -> dict[str, Any]:
         for name, phase in report["coverage"]["phases"].items()
     }
     report["neighbor_observations"] = neighbor_observations
+    if correlation_configuration.get("enabled", True):
+        from scanner.correlation import correlate_report
+        relations, execution = correlate_report(report, max_signals=int(correlation_configuration.get("max_signals", 4096)), max_relations=int(correlation_configuration.get("max_relations", 256)))
+    else:
+        relations, execution = [], {"ruleset_version": "1.0", "signals_eligible": 0, "signals_processed": 0, "relations_eligible": 0, "relations_observed": 0, "truncated": False, "omitted_signals": 0, "omitted_relations": 0}
+    report["evidence_clusters"] = relations
+    report["correlation_execution"] = execution
+    from scanner.coverage import phase_descriptor
+    report["coverage"]["phases"]["enrichment"] = phase_descriptor(
+        "enrichment", supported=True, backend="deterministic_correlation_rules", enabled=bool(correlation_configuration.get("enabled", True)),
+        eligible=execution["signals_eligible"], attempted=execution["signals_processed"], observed=execution["relations_observed"],
+        skipped=execution["omitted_signals"], truncated=execution["truncated"], effective_limits={"workers": 0, "max_signals": correlation_configuration.get("max_signals", 4096), "max_relations": correlation_configuration.get("max_relations", 256)},
+        evidence_refs=[reference for relation in relations for reference in relation["evidence_refs"]],
+    )
+    phase = report["coverage"]["phases"]["enrichment"]
+    report["capability_execution"]["enrichment"] = {"support": phase["support"], "backend": phase["backend"], "enabled": phase["enabled"], "complete_within_configured_scope": phase["complete_within_configured_scope"]}
     return report
 
 

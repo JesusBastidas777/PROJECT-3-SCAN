@@ -227,6 +227,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--http-max-header-bytes", type=positive_integer, default=16384)
     parser.add_argument("--http-body-hash-bytes", type=positive_integer, default=4096)
     parser.add_argument("--http-method", choices=("head", "head-get"), default="head")
+    parser.add_argument("--correlate-evidence", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--correlation-max-signals", type=positive_integer, default=4096)
+    parser.add_argument("--correlation-max-relations", type=positive_integer, default=256)
     return parser
 
 
@@ -297,6 +300,7 @@ def collect_report(args: argparse.Namespace) -> dict[str, Any]:
             profile_configuration={"name": getattr(args, "profile", None), "version": getattr(args, "profile_version", None), "overrides": getattr(args, "profile_overrides", [])},
             **({"neighbor_observations": neighbor_observations, "neighbor_execution": neighbor_execution, "neighbor_configuration": {"enabled": getattr(args, "collect_neighbors", False), "privacy": getattr(args, "neighbor_privacy", "hash-only"), "max_records": getattr(args, "neighbor_max_records", 256), "timeout_seconds": getattr(args, "neighbor_timeout", 1.0), "interface": getattr(args, "neighbor_interface", None)}} if args.schema_version == "2.1" else {}),
             **({"http_configuration": {"enabled": getattr(args, "collect_http", False), "ports": getattr(args, "http_ports", list(DEFAULT_HTTP_PORTS)), "workers": getattr(args, "http_workers", 4), "max_endpoints": getattr(args, "http_max_endpoints", 32), "connect_timeout_seconds": getattr(args, "http_connect_timeout", .5), "tls_timeout_seconds": getattr(args, "http_tls_timeout", 1.0), "read_timeout_seconds": getattr(args, "http_read_timeout", 1.0), "max_header_bytes": getattr(args, "http_max_header_bytes", 16384), "body_hash_bytes": getattr(args, "http_body_hash_bytes", 4096), "method": getattr(args, "http_method", "head")}} if args.schema_version == "2.1" else {}),
+            **({"correlation_configuration": {"enabled": getattr(args, "correlate_evidence", True), "max_signals": getattr(args, "correlation_max_signals", 4096), "max_relations": getattr(args, "correlation_max_relations", 256), "ruleset_version": "1.0"}} if args.schema_version == "2.1" else {}),
         )
     return build_report(
         target_input=args.target,

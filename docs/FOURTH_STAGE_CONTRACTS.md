@@ -22,3 +22,9 @@ does not follow redirects, retain cookies, authenticate or crawl. Explicit
 local body-prefix limit. Only allowlisted metadata and an optional prefix hash
 are retained. Server, Location and response hashes are untrusted evidence and
 do not confirm product, ownership, identity or vulnerability.
+
+Report 2.1 candidate `evidence_clusters` preserve separate asset IDs and expose
+their signal class, evidence references, limitations, ruleset and
+contradictions. PTR or service hints alone never create a multi-address
+relation. Every relation carries `physical_device_asserted=false`; FOREX remains
+responsible for global correlation and interpretation.
