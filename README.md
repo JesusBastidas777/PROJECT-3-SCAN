@@ -1,214 +1,354 @@
-# SCAN
 
-The fifth stage adds deterministic planning, controlled target policies, execution budgets, offline validation/migration, opt-in checkpoints and a local FOREX outbox. See `docs/FIFTH_STAGE_CONTRACTS.md`. SCAN remains an evidence sensor.
 
-SCAN is a small network discovery and TCP port collection tool. It discovers
-reachable hosts with ICMP, checks selected TCP ports, and emits deterministic,
-versioned JSON. SCAN reports observed facts; it does not assess vulnerabilities,
-assign risk, or contain artificial intelligence. FOREX or another downstream
-system can consume the JSON and perform analysis separately.
 
-Use SCAN only on systems and networks you own or are explicitly authorized to
-test. Network scanning may be restricted by law, policy, or provider terms. The
-operator is responsible for obtaining authorization and selecting a safe target
-and concurrency level.
+
+
+
+
+
+# PROJECT-3-SCAN
+
+Network Discovery & Scanning system built in Python for host discovery, TCP port scanning, structured network intelligence, runtime resilience, and future integration with PROJECT FOREX.
+
+**Status:** SCAN V1 Release Candidate
+**FOREX contract:** 2.2
+**Platform:** Linux / WSL
+**Language:** Python
+
+## Overview
+
+PROJECT-3-SCAN is a modular network discovery and scanning system developed as a cybersecurity engineering project.
+
+The system discovers active hosts within a target network, performs TCP port scanning, organizes results by host and network, and exposes structured network state through a stable local interface designed for PROJECT FOREX integration.
+
+The project was designed around several engineering priorities:
+
+* Modular network discovery
+* TCP service enumeration
+* Structured scan results
+* Host-level and network-level summaries
+* Concurrent port scanning
+* Runtime resilience
+* Reproducible validation
+* Clear separation between scanning, runtime, and integration layers
+* Stable FOREX integration boundaries
+
+SCAN operates locally and does not require cloud services or external scanning platforms.
 
 ## Architecture
 
-- `src/scanner/ping.py`: bounded ICMP probe execution.
-- `src/scanner/discovery.py`: target validation and concurrent host discovery.
-- `src/scanner/ports.py`: bounded IPv4/IPv6 TCP connection scanning.
-- `src/scanner/report.py`: schema-v1 summaries and JSON serialization.
-- `src/main.py`: argument parsing, orchestration, output, and exit codes.
-
-The scanner modules do not print progress. The CLI sends machine-readable JSON
-to stdout only when requested and sends human-readable status or errors to
-stderr.
-
-## Requirements and installation
-
-- Python 3.10 or newer.
-- A POSIX-compatible system `ping` command. IPv6 discovery also requires the
-  installed `ping` implementation to support `-6`.
-- No third-party Python packages.
-
-Clone the repository and run it directly:
-
-```bash
-git clone <repository-url>
-cd SCAN
-python3 src/main.py --help
+```text
+                 Target Network
+                       │
+                       ▼
+                Host Discovery
+                       │
+                       ▼
+                Active Hosts
+                       │
+                       ▼
+                TCP Port Scanner
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        Host-Level Data    Network Summary
+              │                 │
+              └────────┬────────┘
+                       ▼
+               Structured State
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        Local Operations    FOREX Contract
+              │                 │
+              ▼                 ▼
+          CLI / GUI        Structured State
 ```
 
-## Usage
+The architecture keeps host discovery, port scanning, result processing, runtime state, and FOREX publication separated so that each component can evolve independently.
 
-Basic IPv4 scan using the default common TCP ports:
+## Discovery Capabilities
 
-```bash
-python3 src/main.py 192.168.1.0/24
+PROJECT-3-SCAN discovers active hosts within a target network using ICMP-based host discovery.
+
+For each discovered host, the scanner records:
+
+* IP address
+* Host availability
+* Scan state
+* TCP port results
+* Open port information
+* Closed port information
+
+The discovery layer is intentionally separated from the TCP scanning layer.
+
+## TCP Scanning
+
+SCAN performs TCP connect-based scanning against a defined set of commonly used service ports.
+
+The default port set includes:
+
+* FTP — 21
+* SSH — 22
+* Telnet — 23
+* SMTP — 25
+* DNS — 53
+* HTTP — 80
+* POP3 — 110
+* IMAP — 143
+* HTTPS — 443
+* SMB — 445
+* RDP — 3389
+
+Each result records:
+
+```text
+port
+protocol
+status
 ```
 
-Single IPv4 or IPv6 host:
+The scanner also supports concurrent port execution so multiple TCP probes can be performed efficiently instead of processing every port strictly sequentially.
 
-```bash
-python3 src/main.py 127.0.0.1/32
-python3 src/main.py ::1/128
+## Structured Network State
+
+SCAN produces structured JSON state containing both detailed scan information and higher-level summaries.
+
+Host-level information includes:
+
+```text
+host
+ports
+open_ports
+open_count
+closed_count
 ```
 
-Choose ports and resource limits:
+Network-level information includes:
 
-```bash
-python3 src/main.py 192.168.1.0/24 \
-  --ports 22,80,443 \
-  --workers 64 \
-  --ping-timeout 1 \
-  --connect-timeout 1 \
-  --max-hosts 4096
+```text
+network
+active_hosts
+total_open_ports
+total_closed_ports
+hosts
 ```
 
-Options:
+This structure allows another system to consume network state without having to parse terminal output.
 
-- `--ports`: comma-separated TCP ports from 1 through 65535. Duplicates are
-  removed while retaining their first position.
-- `--workers`: global concurrency bound from 1 through 256.
-- `--ping-timeout`: positive ICMP timeout in seconds.
-- `--connect-timeout`: positive TCP connection timeout in seconds.
-- `--max-hosts`: safety limit. Targets with more candidate hosts are rejected
-  before discovery begins.
-- `--discovery`: `icmp` preserves legacy behavior; `icmp-tcp` or `tcp` add
-  bounded TCP evidence. Refusal and connection are responses during that probe;
-  timeout remains inconclusive.
-- `--output`: JSON file path, or `-` for JSON on stdout. The default is
-  `results/scan.json` relative to the repository, regardless of the current
-  working directory. Explicit relative paths are resolved from the caller's
-  current directory.
+## Runtime Resilience
 
-`--profile minimal|standard|evidence` expands a versioned preset. Explicit CLI
-flags override profile values and reports record both the profile and complete
-effective configuration. No profile is applied to legacy invocations by default.
+The SCAN runtime is designed to preserve operational state and expose its current condition through a bounded local interface.
 
-CIDR host bits are normalized. For example, `192.168.1.7/24` scans the canonical
-network `192.168.1.0/24`. Large targets such as `0.0.0.0/0` are rejected unless
-the operator deliberately raises `--max-hosts`.
+Runtime information can include:
 
-## Automation and FOREX
+* Scanner status
+* Runtime health
+* Heartbeat information
+* Readiness state
+* Current scan state
+* Published network state
+* Integration metadata
 
-Use `--output -` for a clean JSON stream:
+Operational state is kept separate from the source tree where appropriate.
 
-```bash
-python3 src/main.py 127.0.0.1/32 --ports 22,80 --output -
+## FOREX Integration
+
+PROJECT-3-SCAN is designed to remain an independent cybersecurity component while exposing a stable local contract for PROJECT FOREX.
+
+The current SCAN implementation uses the FOREX integration boundary to publish structured network information without requiring FOREX to directly depend on the internal implementation of the scanner.
+
+Published information can include:
+
+* Active hosts
+* Open TCP ports
+* Host-level summaries
+* Network-level summaries
+* Scanner health
+* Runtime state
+* Freshness metadata
+* Readiness information
+
+The integration contract is documented in:
+
+```text
+docs/
 ```
 
-It can be validated or piped to an authorized downstream consumer:
+FOREX is designed to consume structured SCAN information while allowing PROJECT-3-SCAN to remain independently maintainable.
 
-```bash
-python3 src/main.py 127.0.0.1/32 --output - | python3 -m json.tool
-python3 src/main.py 192.168.1.0/24 --output - | forex-input-command
+## PROJECT FOREX
+
+PROJECT FOREX integrates independently developed cybersecurity components:
+
+```text
+PROJECT-1-EDR   → Endpoint Detection & Response
+PROJECT-2-SOC   → Security Operations
+PROJECT-3-SCAN  → Network Discovery & Scanning
+                         │
+                         ▼
+                   PROJECT FOREX
 ```
 
-When stdout is selected it contains only one JSON document. Operational errors
-remain on stderr. SCAN does not implement FOREX and does not analyze the report.
+FOREX is intended to consume structured information from these systems through defined integration boundaries.
 
-## JSON schema v1
+Each project remains independently executable, testable, and maintainable.
 
-Every report contains:
+## Supported Environment
 
-- `schema_version`: currently `"1.0"`.
-- `scanner`: scanner name and implementation version.
-- `network`: canonical network retained for compatibility.
-- `target`: original input, canonical network, IP version, and candidate count.
-- `timestamp`: scan start time in UTC ISO-8601 format.
-- `duration_ms`: discovery and TCP scan duration measured with a monotonic clock.
-- `summary`: active/scanned hosts, scanned ports, open/closed totals, and errors.
-- `hosts`: ordered host records.
-- `metadata`: discovery method, requested ports, timeouts, workers, and host limit.
+The project is developed and tested using:
 
-Each host retains the established fields `ports`, `open_ports`, `open_count`, and
-`closed_count`, and adds `error_count`. TCP results retain `port`, `protocol`, and
-the status values `OPEN` or `CLOSED`. A report with no active hosts is still a
-complete schema-v1 document with empty `hosts` and zero summary counters.
+* Python 3.11+
+* Linux
+* WSL development environment
+* IPv4 networks
+* TCP/IP networking
 
-Schema 1.0 remains the CLI default and is frozen for compatibility. Select the
-evidence-rich report contract with `--schema-version 2.0`. Version 2.0 separates
-assets, observations, stable errors, actual capabilities and scan configuration.
-It also records ordered ICMP discovery evidence, distinguishing response,
-no-response, timeout, unsupported tooling and stable probe errors. None of these
-results assert that a host is offline.
-`--collect-tls` performs a bounded handshake only on selected open endpoints.
-It sends no application data and records unvalidated, untrusted metadata with a
-hash-only certificate representation; it makes no identity or security claim.
-`--resolve-names` records bounded PTR evidence using the system resolver. Names
-are untrusted aliases, and its timeout is explicitly best-effort rather than a
-portable hard deadline.
-
-Report 2.1 adds per-phase coverage and structured runtime capability execution.
-Optional neighbor collection reads existing local caches without active ARP/NDP
-scanning. Optional HTTP collection sends a bounded HEAD request, never follows
-redirects, crawls, authenticates or retains cookies. Candidate evidence clusters
-keep asset IDs separate and never assert a physical device.
-
-The local `query`, `history list/show` and `feed` commands perform no probes.
-Comparison 2.0 uses strict baseline comparability by default; feed 1.0 is a
-compact projection with an opaque reference to the full report.
-
-`--history-dir PATH` opt-in stores immutable schema-2.0 snapshots plus an atomic
-index. History is never deleted automatically and may retain sensitive banners;
-operators must apply suitable permissions and retention policy.
-Snapshot writers use a finite-time portable lockfile. `SCAN history retain`
-plans deterministic retention in dry-run mode unless `--apply` is explicitly
-provided; retention is never triggered by a scan.
-
-Snapshot comparisons operate only on common measured scope. Missing endpoints and
-unknown/error transitions are explicitly indeterminate; they never assert that a
-host is offline, a timeout is filtering, or a changed banner is an update.
-`SCAN compare BASELINE CURRENT --output -` reads existing snapshots only and
-emits a deterministic `snapshot_comparison` 1.0 document without network probes.
-
-`--events-output PATH` writes a bounded array of versioned FOREX events for a
-schema-2.0 scan. Events are deterministic and idempotent, remain local, and state
-truncation explicitly. They contain evidence, never vulnerability conclusions.
-`--events-format legacy-json|batch-json|ndjson` preserves the legacy default and
-adds a versioned batch or one validated UTF-8 event per line. `--events-privacy
-hash-only` omits sensitive textual evidence where present. No remote transport is
-implemented.
-
-Detailed integration and migration guidance is in `docs/FOREX_INTEGRATION.md`
-and `docs/SCHEMA_MIGRATION.md`. Third-stage contract, privacy, retention and
-portability guidance is in `docs/THIRD_STAGE_CONTRACTS.md`.
-
-## Exit codes
-
-- `0`: scan and output completed successfully.
-- `1`: operational, scanner, or filesystem failure.
-- `2`: invalid CLI usage or unsafe/invalid target.
-- `130`: interrupted by the operator.
-
-## Tests
-
-The suite uses only the Python standard library and does not scan the Internet:
+Create a virtual environment:
 
 ```bash
-python3 -m compileall -q src
-python3 -m unittest discover -s tests -v
+python3 -m venv .venv
 ```
 
-## Known limitations
+Activate it:
 
-- ICMP may be blocked even when a host is online; such a host will not proceed
-  to TCP scanning.
-- For compatibility, TCP refusal, filtering, and connection errors are currently
-  represented as `CLOSED`; SCAN does not claim why a connection failed.
-- ICMP flags target POSIX `ping`/iputils behavior and are not a native Windows
-  implementation.
-- SCAN performs connection checks only. It does not identify services, versions,
-  CVEs, vulnerabilities, or security risk.
-- Internally SCAN distinguishes open, closed, unknown, and probe-error TCP
-  observations. Schema 1.0 retains its historical OPEN/CLOSED projection.
-- Conventional service names are low-confidence port-registry hints only; they do
-  not confirm which protocol or product is listening.
-- `--collect-banners` enables passive reads only on observed open endpoints. Banner
-  bytes are bounded, untrusted, never authenticated, and schema 1.0 omits them.
-- Basic fingerprints are deterministic rules over collected evidence. They expose
-  their basis, confidence and rule ID and do not claim OS, product, CVE or risk.
-- Inventory asset IDs identify an address observation within a canonical target;
-  they are not permanent identities and distinct addresses are never auto-merged.
+```bash
+source .venv/bin/activate
+```
+
+Install project dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+## Running SCAN
+
+The basic scanner entrypoint is:
+
+```bash
+python3 src/main.py <network>
+```
+
+Example:
+
+```bash
+python3 src/main.py 192.168.1.0/29
+```
+
+The scanner discovers active hosts, performs TCP port scanning, and writes structured results to:
+
+```text
+results/scan.json
+```
+
+The project also provides operational interfaces for runtime inspection and FOREX integration.
+
+## Validation
+
+The project includes automated tests covering core scanning components and application behavior.
+
+Run the test suite with:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
+```
+
+The project should also be validated using a controlled network environment before operational use.
+
+Only scan networks and systems for which you have authorization.
+
+## Project Structure
+
+```text
+PROJECT-3-SCAN/
+│
+├── docs/
+├── results/
+├── src/
+│   ├── main.py
+│   ├── scanner/
+│   │   ├── discovery.py
+│   │   ├── ping.py
+│   │   └── ports.py
+│   └── utils/
+│
+├── tests/
+├── main.py
+├── README.md
+└── requirements.txt
+```
+
+## Documentation
+
+Additional engineering and integration documentation is available in:
+
+```text
+docs/
+```
+
+The documentation covers the scanner architecture, runtime behavior, integration boundaries, and validation information.
+
+## Security Considerations
+
+PROJECT-3-SCAN is a network security engineering tool.
+
+Scanning can generate network traffic and may be detected or blocked by network security controls.
+
+The scanner should only be used against networks and systems for which the operator has explicit authorization.
+
+The project is intended for educational, engineering, testing, and authorized security assessment purposes.
+
+## Current Status
+
+PROJECT-3-SCAN has completed its development milestone and has been validated through its development history.
+
+The project includes:
+
+* Host discovery
+* TCP port scanning
+* Concurrent scanning
+* Structured JSON results
+* Host-level summaries
+* Network-level summaries
+* Runtime state
+* Operational interfaces
+* FOREX integration boundaries
+* Automated tests
+* GUI support
+
+The project is considered a completed component of the PROJECT FOREX ecosystem.
+
+## Roadmap
+
+Future work may include:
+
+* Additional protocol support
+* Expanded service detection
+* Deeper network intelligence
+* Additional performance optimization
+* Expanded automated validation
+* Continued PROJECT FOREX integration
+
+## Author
+
+**Jesús Bastidas**
+
+Mechatronics student focused on cybersecurity, systems engineering, networking, Linux, and Python.
+
+PROJECT-3-SCAN was developed as part of my practical cybersecurity engineering work and as the third component of a larger set of independently developed security projects.
+
+## License
+
+This project is licensed under the MIT License.
+
+See `LICENSE` for details.
+
+
+
+
+
+
+
+
+
